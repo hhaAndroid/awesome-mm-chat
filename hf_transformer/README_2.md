@@ -207,3 +207,6 @@ model_inputs = tokenizer(sequences, max_length=8, truncation=True)
 model_inputs = tokenizer(sequences, padding=True, return_tensors="pt")
 ```
 "pt" 返回PyTorch 张量，"tf"返回TensorFlow张量，"np"返回NumPy数组：
+
+
+下一部分 [README_3](README_3.md)
