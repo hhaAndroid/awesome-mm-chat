@@ -5,6 +5,7 @@
 Vicuna 是 一个开源聊天机器人，号称达到了 ChatGPT 的 90%，也是基于 LLaMA 通过指令微调而来。
 
 Vicuna 开源代码地址：https://github.com/lm-sys/FastChat
+
 Fork 并注释版本： https://github.com/hhaAndroid/FastChat/tree/hha
 
 ### CentOS 7 + 32G V100 本地部署流程
