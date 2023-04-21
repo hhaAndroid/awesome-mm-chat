@@ -14,3 +14,8 @@ Vicuna 开源代码地址：https://github.com/lm-sys/FastChat
 Fork 并注释版本： https://github.com/hhaAndroid/FastChat/tree/hha
 
 具体见 [Vicuna 小羊驼](vicuna.md)
+
+## CLIP 解读
+
+具体见 [CLIP 解读](CLIP.md)
+

@@ -151,6 +151,7 @@ def demo_4():
 
     from transformers import AutoModelForSequenceClassification
 
+    # 这个 finetune 应该是全部层都 finetune
     model = AutoModelForSequenceClassification.from_pretrained(checkpoint, num_labels=2)
     from transformers import AdamW
 
