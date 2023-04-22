@@ -17,5 +17,10 @@ Fork 并注释版本： https://github.com/hhaAndroid/FastChat/tree/hha
 
 ## CLIP 解读
 
+论文题目： Learning Transferable Visual Models From Natural Language Supervision
+论文地址： https://arxiv.org/abs/2103.00020
+官方地址： https://github.com/openai/CLIP (没有训练代码)
+Fork 并注释版本： https://github.com/hhaAndroid/CLIP
+
 具体见 [CLIP 解读](CLIP.md)
 
