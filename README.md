@@ -19,8 +19,21 @@ Fork 并注释版本： https://github.com/hhaAndroid/FastChat/tree/hha
 论文题目： Learning Transferable Visual Models From Natural Language Supervision  
 论文地址： https://arxiv.org/abs/2103.00020  
 官方地址： https://github.com/openai/CLIP (没有训练代码)   
-Fork 并注释版本： https://github.com/hhaAndroid/CLIP   
+Fork 并注释版本： https://github.com/hhaAndroid/CLIP/tree/hha   
 
 具体见 [CLIP 解读](CLIP.md)
 
 ## GLIP 解读
+
+论文题目： GLIP: Grounded Language-Image Pre-training  
+论文地址： https://arxiv.org/abs/2112.03857  
+官方地址：https://github.com/microsoft/GLIP   
+Fork 并注释版本： https://github.com/hhaAndroid/GLIP/tree/hha   
+
+具体见 [GLIP 解读](GLIP.md)
+
+## BLIP 解读
+
+## MiniGPT4 解读
+
+## DINOv2 解读
