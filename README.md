@@ -6,6 +6,13 @@
 
 具体见 [HuggingFace Transformers](hf_transformer/README.md)
 
+## MMGPT
+
+知乎地址：https://zhuanlan.zhihu.com/p/625456570
+开源地址：https://github.com/open-mmlab/Multimodal-GPT
+
+具体见 [mmgpt](mmgpt.md)
+
 ## Vicuna 小羊驼
 Vicuna 是 一个开源聊天机器人，号称达到了 ChatGPT 的 90%，也是基于 LLaMA 通过指令微调而来。
 
