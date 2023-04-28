@@ -1,11 +1,11 @@
 # LangChain 说明
 
-官方地址： https://github.com/hwchase17/langchain
-文档： https://python.langchain.com/en/latest/ 重要，特别是 agent 部分
-官方博客：https://blog.langchain.dev/
-非官方中文教程： https://liaokong.gitbook.io/llm-kai-fa-jiao-cheng/ 写的很好
-awesome: https://github.com/kyrolabs/awesome-langchain
-B 站上面有很多： https://search.bilibili.com/all?keyword=LangChain 但是没发现真正啥有用的
+官方地址： https://github.com/hwchase17/langchain   
+文档： https://python.langchain.com/en/latest/ 重要，特别是 agent 部分   
+官方博客：https://blog.langchain.dev/   
+非官方中文教程： https://liaokong.gitbook.io/llm-kai-fa-jiao-cheng/ 写的很好   
+awesome: https://github.com/kyrolabs/awesome-langchain   
+B 站上面有很多： https://search.bilibili.com/all?keyword=LangChain 但是没发现真正啥有用的   
 
 LangChain 目标是将 LLM 与开发者现有的知识和系统相结合，以提供更智能化的服务。众所周知 OpenAI 的 API 无法联网的，所以如果只使用自己的功能实现联网搜索并给出回答、总结 PDF 文档、基于某个 Youtube 视频进行问答等等的功能肯定是无法实现的，强大的 LangChain 可以做到这个事情
 
@@ -35,9 +35,9 @@ LangChain主要包括以下几个主要的模块：
 注意： GPT3.5 模型本身是不支持多轮对话的，ChatGPT 其实是在 GPT3.5 之上植入了 Memory 实现了多轮对话的能力。也就是说我们经常和 LLM 进行对话，实际上他本身不具备连续对话能力，只不过程序员会维持一个可自定义的 memory bank
 每次聊天时候都会把前后文发过去，所以才有了连续对话能力。
 
-REACT 技术 (Reason+Act): https://arxiv.org/pdf/2210.03629.pdf
-LLM 的 ReAct 模式的 Python 实现: https://til.simonwillison.net/llms/python-react-pattern
-执行过程：https://blog.csdn.net/qq_35361412/article/details/129797199 写的非常详细，强烈推荐
+REACT 技术 (Reason+Act): https://arxiv.org/pdf/2210.03629.pdf   
+LLM 的 ReAct 模式的 Python 实现: https://til.simonwillison.net/llms/python-react-pattern   
+执行过程：https://blog.csdn.net/qq_35361412/article/details/129797199 写的非常详细，强烈推荐   
 
 ## langchain-ChatGLM 学习记录
 
@@ -47,8 +47,8 @@ LLM 的 ReAct 模式的 Python 实现: https://til.simonwillison.net/llms/python
 <img src="https://user-images.githubusercontent.com/17425982/235078705-dc362fc9-21b4-45d3-ba2d-e40d49638f74.png"/>
 </div>
 
-项目地址：https://github.com/imClumsyPanda/langchain-ChatGLM
-在线可运行地址：https://www.heywhale.com/mw/project/643977aa446c45f4592a1e59
+项目地址：https://github.com/imClumsyPanda/langchain-ChatGLM   
+在线可运行地址：https://www.heywhale.com/mw/project/643977aa446c45f4592a1e59   
 
 实现原来看起来比较简单：
 
@@ -72,13 +72,13 @@ LLM 的 ReAct 模式的 Python 实现: https://til.simonwillison.net/llms/python
 
 ## visual chatgpt
 
-Visual ChatGPT 原理：https://medium.com/mlearning-ai/visual-chatgpt-paper-and-code-review-ffe69ff16671
+Visual ChatGPT 原理：https://medium.com/mlearning-ai/visual-chatgpt-paper-and-code-review-ffe69ff16671   
 看完这个博客 https://blog.csdn.net/qq_35361412/article/details/129797199 就知道 visual chatgpt 运行原理了。核心还是构建 prompt ，然后一切交给 LLM 就行。langchain 的应用。
 
 ### hugginggpt
 
-论文地址： https://arxiv.org/pdf/2303.17580.pdf
-官方地址：https://github.com/microsoft/JARVIS/blob/main/server/run_gradio_demo.py
+论文地址： https://arxiv.org/pdf/2303.17580.pdf   
+官方地址：https://github.com/microsoft/JARVIS/blob/main/server/run_gradio_demo.py   
 
 代码写的比较简单，没有用 langchain 库，看起来比较容易。做法实际上和 visualGPT 一样，但是 visualGPT 用了 langchain，代码虽然看起来比较简洁，但是比较难理解。
 
