@@ -6,6 +6,21 @@
 
 具体见 [HuggingFace Transformers](hf_transformer/README.md)
 
+## LangChain 
+
+官方地址： https://github.com/hwchase17/langchain
+文档： https://python.langchain.com/en/latest/
+
+具体见 [langchain](langchain.md)
+
+## PEFT
+
+Parameter-Efficient Fine-Tuning
+
+官方地址： https://github.com/huggingface/peft
+
+具体见 [PEFT](peft.md)
+
 ## MMGPT
 
 知乎地址：https://zhuanlan.zhihu.com/p/625456570
