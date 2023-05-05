@@ -8,6 +8,14 @@ fork 并注释版本: https://github.com/hhaAndroid/peft/tree/hha
 
 这个库现在代码量很少，没有几个 py 文件，阅读起来比较容易。
 
+统一视角理解 PEFT: [Towards a Unified View of Parameter-Efficient Transfer Learning](https://arxiv.org/pdf/2110.04366v3.pdf)
+
+下图可以帮助理解：
+
+<div align=center>
+<img src="https://user-images.githubusercontent.com/17425982/236398391-d452b785-8d53-4979-a016-4945c4930ea6.png"/>
+</div>
+
 ## LORA 
 ### 原理
 
@@ -273,7 +281,113 @@ print(tokenizer.decode(outputs[0]))  # <pad> I love you.</s>
 具体见 https://github.com/hhaAndroid/peft/tree/hha
 
 ## Prefix tuning 
+
+论文：Prefix-Tuning: Optimizing Continuous Prompts for Generation
+地址： https://arxiv.org/abs/2101.00190
+
 ### 原理
 
+只训练 prefix 部分，其他地方全部固定。
+
 ### 实践
+
+可以采用同样的模型，然后对比 peft 前面的模型结构差异。不过发现代码实现比较复杂，可能有错误理解的地方。
+
+<div align=center>
+<img src="https://user-images.githubusercontent.com/17425982/236375207-4fadad2e-710b-4492-a6a5-b6a15cf55260.png"/>
+</div>
+
+代码为：
+
+```python
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+from peft import get_peft_model, PrefixTuningConfig, TaskType
+
+# model_name_or_path = "bigscience/mt0-large"
+model_name_or_path = "bigscience/mt0-small"
+
+# 对于这个模型，token_dim 必须要设置为 384，否则由于维度不匹配， model.generate 会报错
+# 因为每个向量又分成了 6 个 head，所以 token_dim 必须要能被 6 整除，默认是 512，无法整除
+peft_config = PrefixTuningConfig(task_type=TaskType.SEQ_2_SEQ_LM, inference_mode=False, num_virtual_tokens=20, token_dim=384)
+
+model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path)
+# print(model)
+
+model = get_peft_model(model, peft_config)
+print(model)
+model.print_trainable_parameters() # trainable params: 122880 || all params: 300299648 || trainable%: 0.04091912888289499
+
+tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
+inputs = tokenizer.encode("Translate to English: Je t’aime.", return_tensors="pt")
+outputs = model.generate(input_ids=inputs)
+print(tokenizer.decode(outputs[0]))  # <pad> I love you.</s>
+```
+
+可以发现相比 lora，Prefix tuning 方法改动更少，只需要在模型前面新增 prompt_encoder + word_embeddings 就可以了。新增部分如下：
+
+```python
+  (prompt_encoder): ModuleDict(
+    (default): PrefixEncoder(
+      (embedding): Embedding(20, 6144)
+    )
+  )
+  (word_embeddings): Embedding(250112, 512)
+```
+
+核心逻辑代码为 PrefixEncoder
+
+```python
+class PrefixEncoder(torch.nn.Module):
+     self.embedding = torch.nn.Embedding(num_virtual_tokens, num_layers * 2 * token_dim)
+```
+如果不使用 mlp 层投影，那么核心就是加了一个 embeding 层。
+
+- num_virtual_tokens 表示新增的可以学习的虚拟 token 数(按照论文应该是编码器和解码器都要加虚拟 token，为啥看起来只是 decoder 加了，encoder 没有加？)
+- num_layers 表示有多少个 decoder transformer 层，实际上是 8 个
+- token_dim 表示每个 token 的维度
+- 2 表示 编码器输出的 vk 两个向量都要加虚拟 token
+
+也就是说虽然代码实现方便 embedding 就是一个大的矩阵，但是实际上虚拟 token 要加到每个 decoder transformer 层 vk 向量前面
+
+但是如果又不想直接改动 MT5ForConditionalGeneration 模型(其本身参数见 https://huggingface.co/bigscience/mt0-small/blob/main/config.json)，则需要在 PeftModelForSeq2SeqLM 中进行一些前后处理
+
+具体代码实现比较复杂，下面列一下核心代码，实际上就是在自注意力层进行操作
+
+```python
+# site-packages/transformers/models/mt5/modeling_mt5.py#MT5Attention
+# get key/value states
+# past_key_value 就是额外追加的 20 个 token 的 embeding
+key_states = project(
+    hidden_states, self.k, key_value_states, past_key_value[0] if past_key_value is not None else None
+)
+value_states = project(
+    hidden_states, self.v, key_value_states, past_key_value[1] if past_key_value is not None else None
+)
+
+def project(hidden_states, proj_layer, key_value_states, past_key_value):
+    """projects hidden states correctly to key/query states"""
+    if key_value_states is None:
+        # self-attn
+        # (batch_size, n_heads, seq_length, dim_per_head)
+        hidden_states = shape(proj_layer(hidden_states))
+    elif past_key_value is None:
+        # cross-attn
+        # (batch_size, n_heads, seq_length, dim_per_head)
+        hidden_states = shape(proj_layer(key_value_states))
+    if past_key_value is not None:
+        if key_value_states is None:
+            # self-attn
+            # (batch_size, n_heads, key_length, dim_per_head)
+            hidden_states = torch.cat([past_key_value, hidden_states], dim=2) # 核心代码
+        elif past_key_value.shape[2] != key_value_states.shape[1]:
+            # checking that the `sequence_length` of the `past_key_value` is the same as
+            # the provided `key_value_states` to support prefix tuning
+            # cross-attn
+            # (batch_size, n_heads, seq_length, dim_per_head)
+            hidden_states = shape(proj_layer(key_value_states))
+        else:
+            # cross-attn
+            hidden_states = past_key_value
+    return hidden_states
+```
 
