@@ -6,7 +6,7 @@ Parameter-Efficient Fine-Tuning
 官方文档：https://huggingface.co/docs/peft/index
 fork 并注释版本: https://github.com/hhaAndroid/peft/tree/hha
 
-这个库现在代码量很少，没有几个 py 文件，阅读起来比较容易。
+这个库现在代码量很少，没有几个 py 文件，阅读起来比较容易。examples 里面也有很多可以直接跑的案例
 
 统一视角理解 PEFT: [Towards a Unified View of Parameter-Efficient Transfer Learning](https://arxiv.org/pdf/2110.04366v3.pdf)
 
@@ -17,6 +17,7 @@ fork 并注释版本: https://github.com/hhaAndroid/peft/tree/hha
 </div>
 
 ## LORA 
+
 ### 原理
 
 论文题目： LORA: Low-Rank Adaptation of Large Language Models
@@ -289,6 +290,10 @@ print(tokenizer.decode(outputs[0]))  # <pad> I love you.</s>
 
 只训练 prefix 部分，其他地方全部固定。
 
+- 把预训练大模型freeze住，因为大模型参数量大，精调起来效率低，毕竟prompt的出现就是要解决大模型少样本的适配
+- 作者发现直接优化Prompt参数不太稳定，加了个更大的MLP，训练完只保存MLP变换后的参数就行了
+- 实验证实只加到embedding上的效果不太好，因此作者在每层都加了prompt的参数，改动较大
+
 ### 实践
 
 可以采用同样的模型，然后对比 peft 前面的模型结构差异。不过发现代码实现比较复杂，可能有错误理解的地方。
@@ -331,7 +336,6 @@ print(tokenizer.decode(outputs[0]))  # <pad> I love you.</s>
       (embedding): Embedding(20, 6144)
     )
   )
-  (word_embeddings): Embedding(250112, 512)
 ```
 
 核心逻辑代码为 PrefixEncoder
@@ -391,3 +395,270 @@ def project(hidden_states, proj_layer, key_value_states, past_key_value):
     return hidden_states
 ```
 
+## P-Tuning
+
+论文： [GPT Understands, Too](https://arxiv.org/abs/2103.10385)
+参考：https://huggingface.co/docs/peft/task_guides/ptuning-seq-classification
+
+### 原理
+
+<div align=center>
+<img src="https://user-images.githubusercontent.com/17425982/236403330-0136530d-63e6-42b1-bc12-c9ff3f7bb97a.png"/>
+</div>
+
+核心思想就是：人为构建好的 prompt 是比较难的，不同任务还不一样，设置为可学习是非常合理的。PromptEncoder 的位置其实不一定是前面，可以是任意位置，如上图所示，只不过 PEFT 里面实现的前面。
+
+- Prefix Tuning 是将额外的 embedding 加在开头，看起来更像是模仿 Instruction 指令；而 P-Tuning 的位置则不固定。
+- Prefix Tuning 通过在每个 Attention 层都加入 Prefix Embedding 来增加额外的参数，通过 MLP 来初始化；而 P-Tuning 只是在输入的时候加入 Embedding，并通过 LSTM+MLP 来初始化。
+
+实现上相比 Prefix Tuning 简单很多。
+
+### 实践
+
+```python
+(prompt_encoder): ModuleDict(
+    (default): PromptEncoder(
+      (embedding): Embedding(20, 768)
+      (mlp_head): Sequential(
+        (0): Linear(in_features=768, out_features=128, bias=True)
+        (1): ReLU()
+        (2): Linear(in_features=128, out_features=128, bias=True)
+        (3): ReLU()
+        (4): Linear(in_features=128, out_features=768, bias=True)
+      )
+    )
+  )
+```
+
+因为这个随机的 PromptEncoder 是很离散的，要想得到连续的 embeding，作者说需要对初始化特别设置，例如在 mlp_head 前面再接入一个 lstm_head。
+
+整个运行过程非常好理解;
+
+```python
+# peft/peft_model.py#PeftModelForSequenceClassification
+if inputs_embeds is None:
+    inputs_embeds = self.word_embeddings(input_ids) # 输入进行 embedding
+
+prompts = self.get_prompt(batch_size=batch_size) # 获得 prompt 的 embeding
+prompts = prompts.to(inputs_embeds.dtype)
+
+inputs_embeds = torch.cat((prompts, inputs_embeds), dim=1)  # 拼接作为输入即可 （1,20+n,768）
+return self.base_model(inputs_embeds=inputs_embeds, **kwargs) # 和 base 模型一样运行即可
+```
+
+```python
+# get_prompt 方法
+prompt_tokens = torch.arange(config.num_virtual_tokens * 1).long()
+prompts = prompt_encoder(prompt_tokens)
+```
+
+## Prompt tuning
+
+### 原理
+[The Power of Scale for Parameter-Efficient Prompt Tuning](https://arxiv.org/abs/2104.08691)
+
+Causal Language Modeling： 因果语言建模，因果语言建模关注于根据给定的上下文生成文本序列。在这种建模方法中，模型试图预测给定上下文中的下一个单词，该上下文通常包括在当前单词之前的所有单词。这种建模方法遵循因果原则，即当前单词只受到其前面单词的影响，而不受后面单词的影响。
+
+因果语言建模的一个经典应用是GPT（如GPT-2和GPT-3），它主要用于生成连贯的文本。在这种建模方法中，模型接收一个输入序列，然后生成一个自然且语法正确的输出序列。
+
+代表模型：GPT2、Bloom、OPT、GPT-Neo、GPT-J、LLaMA、ChatGLM。
+
+Prompt tuning 和 P-tuning 非常类似，做法几乎可以说一样，只不过初始化策略不一样，Prompt tuning 可以直接用文本初始化虚拟 token，帮助训练
+
+### 实践
+
+```python
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from peft import get_peft_model, PromptTuningInit, PromptTuningConfig, TaskType
+
+model_name_or_path = "bert-base-cased"
+
+peft_config = PromptTuningConfig(
+    task_type=TaskType.CAUSAL_LM,
+    prompt_tuning_init=PromptTuningInit.TEXT,
+    num_virtual_tokens=8,
+    prompt_tuning_init_text="Classify if the tweet is a complaint or not:",
+    tokenizer_name_or_path=model_name_or_path,
+)
+
+model = AutoModelForCausalLM.from_pretrained(model_name_or_path, return_dict=True)
+model = get_peft_model(model, peft_config)
+model.print_trainable_parameters()   # trainable params: 1413636 || all params: 125468676 || trainable%: 1.1266844004953076
+
+# TODO 训练中...
+
+# 假装训练好了
+text_column = "Tweet text"
+tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
+inputs = tokenizer(
+    f'{text_column} : {"@nationalgridus I have no water and the bill is current and paid. Can you do something about this?"} Label : ',
+    return_tensors="pt",
+)
+
+# 因为没有训练，所以实际上是瞎输出
+outputs = model.generate(
+    input_ids=inputs["input_ids"],
+    attention_mask=inputs["attention_mask"],
+    # max_new_tokens=10,
+    eos_token_id=102
+)
+print(tokenizer.batch_decode(outputs.detach().cpu().numpy(), skip_special_tokens=True))
+```
+
+核心代码为：
+
+```python
+class PromptEmbedding(torch.nn.Module):
+    def __init__(self, config, word_embeddings):
+        super().__init__()
+
+        total_virtual_tokens = config.num_virtual_tokens * config.num_transformer_submodules
+        self.embedding = torch.nn.Embedding(total_virtual_tokens, config.token_dim)
+        if config.prompt_tuning_init == PromptTuningInit.TEXT:
+            from transformers import AutoTokenizer
+            
+            # 对于输入的文本进行 token，并作为 embedding 的初始化权重
+            tokenizer = AutoTokenizer.from_pretrained(config.tokenizer_name_or_path)
+            init_text = config.prompt_tuning_init_text
+            init_token_ids = tokenizer(init_text)["input_ids"]
+            # Trim or iterate until num_text_tokens matches total_virtual_tokens
+            num_text_tokens = len(init_token_ids)
+            if num_text_tokens > total_virtual_tokens:
+                init_token_ids = init_token_ids[:total_virtual_tokens]
+            elif num_text_tokens < total_virtual_tokens:
+                num_reps = math.ceil(total_virtual_tokens / num_text_tokens)
+                init_token_ids = init_token_ids * num_reps
+            init_token_ids = init_token_ids[:total_virtual_tokens]
+
+            word_embedding_weights = word_embeddings(torch.LongTensor(init_token_ids)).detach().clone()
+            word_embedding_weights = word_embedding_weights.to(torch.float32)
+            self.embedding.weight = torch.nn.Parameter(word_embedding_weights)
+
+    def forward(self, indices):
+        # Just get embeddings
+        prompt_embeddings = self.embedding(indices)
+        return prompt_embeddings
+```
+
+训练时候也是作为虚拟 token 加入到输入 embedding 前面拼接起来。
+
+## adalora
+
+AdaLoRA: [Adaptive Budget Allocation for Parameter-Efficient Fine-Tuning](https://arxiv.org/abs/2303.10512)  
+
+### 原理
+
+How can we allocate the parameter budget adaptively according to importance of modules to improve the performance of parameter-efficient fine-tuning?
+
+核心出发点是： lora 会对所有的 attention 都加入同样 rank 的可学习参数。但是实际上实验表明不同层的 attention 所需要的可学习参数不一样。在给定可学习参数预算情况下，如何最大化性能是一个值得关注的问题、
+本文提出了 adalora 算法，在类似 LoRA 的微调期间动态分配权重矩阵之间的参数预算。具体来说，AdaLoRA 调整增量矩阵的rank 以控制它们的预算。关键增量矩阵被赋予高等级，以便它们可以捕获更细粒度的和特定于任务的信息。
+
+AdaLoRA根据重要性评分自适应地分配参数预算，其实就是每次训练时候都动态的修改每个层的 rank，并且参数要基于新的 rank 进行 resize。在AdaLoRA中，以奇异值分解的形式对权重矩阵的增量更新进行参数化。然后，根据新的重要性指标，通过操纵奇异值，在增量矩阵之间动态地分配参数预算。这种方法有效地提高了模型性能和参数效率。
+
+### 实践
+
+由于目前用的不是很多，暂时没有细看。
+
+## LLaMA-Adapter
+
+论文： [LLaMA-Adapter: Efficient Fine-tuning of Language Models with Zero-init Attention](https://arxiv.org/pdf/2303.16199.pdf)
+
+### 原理
+
+<div align=center>
+<img src="https://user-images.githubusercontent.com/17425982/236591154-bc2f75f8-4acb-43e5-b86b-0d376d796faf.png"/>
+</div>
+
+从原理图上看没有特别大的区别，也是在自注意力模块处加了可学习的虚拟 token，并且为了保证初始化时候不破坏原始信息流，会设计为 zero-init 初始化，特别的是设置了一个 zero-gate 门控模块。
+
+并且不是所有 transformer 层都会加入虚拟 token，只是高层会加入，这是一个超参数。
+
+同时还构造了一个多模态版本，可以支持图片和文本输入，输出依然是文本。
+
+<div align=center>
+<img src="https://user-images.githubusercontent.com/17425982/236591372-aaecf273-5382-4c89-b70d-e1e9dd075bc0.png"/>
+</div>
+
+### 实践
+
+实现上也比较简单，将要换到的 attention 层全部替换为 AdaptedAttention 即可
+
+```python
+class AdaptedAttention(nn.Module):
+    def __init__(self, model_type: str, adapter_len: int, model):
+        assert not isinstance(model, AdaptedAttention)
+        super().__init__()
+        self.model_type = model_type
+        self.model = model # 这个是被替换前的 attention 模块
+        self.adapter_len = adapter_len
+        # Assume all parameters of the attention model we are wrapping are on the same device.
+        device = next(model.parameters()).device
+        # Don't think this was specified in the paper, but we follow the official repo which used an Embedding
+        # which initializes the tokens with standard normal values.
+        # https://github.com/ZrrSkywalker/LLaMA-Adapter/blob/41c3546fe1997ab8a65809dc8d8f9252b19d9faf/llama/model.py#L234
+        # (bsz, adapter_len, hidden_size)
+        self.adaption_prompt = nn.Parameter(
+            torch.empty(1, adapter_len, self.model.hidden_size, device=device).normal_()
+        )
+        # Initialize the gate to 0 as this is "zero-init".
+        self.adaption_gate = nn.Parameter(torch.zeros(1, device=device))
+
+    def forward(self, **kwargs):
+        # 原先模块正常运行
+        output, _, past_key_value = self.model(**kwargs)
+        bsz = output.shape[0]
+        q_len = output.shape[1]
+        embed_dim = output.shape[2]
+        # 获取到原先模块中的 layer
+        k_proj_layer = TRANSFORMERS_MODEL_CONFIG[self.model_type].k_proj_layer
+        v_proj_layer = TRANSFORMERS_MODEL_CONFIG[self.model_type].v_proj_layer
+        o_proj_layer = TRANSFORMERS_MODEL_CONFIG[self.model_type].o_proj_layer
+        
+        # 利用原先模块，对 adaption 进行投影计算
+        if k_proj_layer == v_proj_layer:
+            _, key, value = getattr(self.model, k_proj_layer)(self.adaption_prompt).split(embed_dim, dim=2)
+        else:
+            key = getattr(self.model, k_proj_layer)(self.adaption_prompt)
+            value = getattr(self.model, v_proj_layer)(self.adaption_prompt)
+        # (bsz, num_heads, adapter_len, head_dim)
+        adapter_k = (
+            key.view(1, self.adapter_len, self.model.num_heads, self.model.head_dim)
+            .repeat(bsz, 1, 1, 1)
+            .transpose(1, 2)
+        )
+        # (bsz, num_heads, adapter_len, head_dim)
+        adapter_v = (
+            value.view(1, self.adapter_len, self.model.num_heads, self.model.head_dim)
+            .repeat(bsz, 1, 1, 1)
+            .transpose(1, 2)
+        )
+
+        # Recompute query states.
+        # 因为目前的设计中没有返回 q 的值，因此需要重新对原始模块计算一下
+        compute_query_states = TRANSFORMERS_MODEL_CONFIG[self.model_type].compute_query_states
+        # (bsz, num_heads, q_len, head_dim)
+        query_states = compute_query_states(model=self.model, **kwargs)
+        
+        # 以下计算需要对照公式，具体也是简单的 attention 计算过程
+        # (bsz, num_heads, q_len, adapter_len)
+        scores = torch.matmul(query_states, adapter_k.transpose(2, 3)) / math.sqrt(self.model.head_dim)
+        # Upcast attention to fp32
+        # (bsz, num_heads, q_len, adapter_len)
+        scores = self.adaption_gate * F.softmax(scores, dim=-1, dtype=torch.float32).to(query_states.dtype)
+        # (bsz, q_len, num_heads * head_dim)
+        adapter_output = torch.matmul(scores, adapter_v).transpose(1, 2).reshape(bsz, q_len, -1)
+        # (bsz, q_len, hidden_size)
+        if o_proj_layer is not None:
+            adapter_output = getattr(self.model, o_proj_layer)(adapter_output)
+        
+        # 构成残差
+        # Add adaption prompt output to original output.
+        output = output + adapter_output
+        return output, None, past_key_value
+```
+
+## LLaMA-Adapter v2
+
+LLaMA-Adapter V2: Parameter-Efficient Visual Instruction Model
+
+重点对 LLaMA-Adapter 中的 图文多模态模型进行更新。
