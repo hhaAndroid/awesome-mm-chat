@@ -21,6 +21,10 @@ Parameter-Efficient Fine-Tuning
 
 具体见 [PEFT](peft.md)
 
+## Diffusers
+
+具体见 [Diffusers](diffusers.md)
+
 ## MMGPT
 
 知乎地址：https://zhuanlan.zhihu.com/p/625456570  
