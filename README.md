@@ -1,6 +1,12 @@
 # awesome-mm-chat
 多模态 MM +Chat 合集
 
+## 模型部分
+
+BERT 和 GPT 系列是 NLP 领域的两大基石，因此对这两个模型的结构进行详细分析是非常有必要。
+
+具体见 [BERT](BERT.md) 和 [GPT](GPT.md)
+
 ## HuggingFace Transformers 基础教程
 本部分用于 CVer 们快速上手 HuggingFace Transformers
 
