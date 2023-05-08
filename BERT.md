@@ -1,6 +1,6 @@
 # BERT
 
-论文： [BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding](https://arxiv.org/abs/1810.04805)
+论文： [BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding](https://arxiv.org/abs/1810.04805)  
 
 最大贡献是验证了在 NLP 中也可以采用先无监督预训练后微调的方式，而且效果非常好。微调时候只需要简单的增加一些输出层即可对下游任务进行微调，不需要修改 BERT 架构。
 
@@ -157,7 +157,6 @@ def preprocess(self, inputs, return_tensors=None, **preprocess_parameters) -> Di
     self.ensure_exactly_one_mask_token(model_inputs)
     return model_inputs
 ```
-hf_tr
 
 ```python
 def _forward(self, model_inputs):
