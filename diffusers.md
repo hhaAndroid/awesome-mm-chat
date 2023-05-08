@@ -1,13 +1,13 @@
 # Diffusers
 
-官方文档：https://huggingface.co/docs/diffusers/index
+官方文档：https://huggingface.co/docs/diffusers/index  
 
 ## DreamBooth
 
-官方论文： [DreamBooth: Fine Tuning Text-to-Image Diffusion Models for Subject-Driven Generation](https://arxiv.org/abs/2208.12242)
-Dreambooth on Stable Diffusion： https://github.com/XavierXiao/Dreambooth-Stable-Diffusion
-HF 链接： https://huggingface.co/docs/diffusers/training/dreambooth
-解释：https://huggingface.co/blog/dreambooth
+官方论文： [DreamBooth: Fine Tuning Text-to-Image Diffusion Models for Subject-Driven Generation](https://arxiv.org/abs/2208.12242)  
+Dreambooth on Stable Diffusion： https://github.com/XavierXiao/Dreambooth-Stable-Diffusion   
+HF 链接： https://huggingface.co/docs/diffusers/training/dreambooth   
+解释：https://huggingface.co/blog/dreambooth   
 
 
 DreamBooth 是一种全量参数微调方法(个性化通用 Diffusion 方法)，只需要非常少的图片就可以实现将特定物体或者风格编码到 Diffusion Model 中。但是需要全量微调，一般会配合 LoRA 一起使用。
