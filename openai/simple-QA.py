@@ -7,9 +7,16 @@ import argparse
 import os
 from mmengine.utils import scandir
 
-MAX_TOKEN_LEN = 4096
+EXTENSIONS = ('md',)
+MAX_TOKEN_LEN = 4096  # 切分文本时候，每段文本最大长度
 text_embedding_model = "text-embedding-ada-002"
+OUT_EMBEDDING_DIM = 1536  # text_embedding_model 输出维度
 chatgpt_model = 'gpt-3.5-turbo'
+
+# TOPK×EXTRA_PADDING_NUM=25,也就是说每次查询会输入最多 25 和片段进行，最大不超过 MAX_INPUT_TOKEN
+TOPK = 3  # 选择数据库里面 topk 条组成 prompt
+EXTRA_PADDING_NUM = 5  # 核心参数，对于数据库中被选择的每条参考文本，额外扩展连续的 n 个 item，因为考虑在处理时候会非常多个 item
+MAX_INPUT_TOKEN = 1000  # 输入给 gpt 的最大 token 长度, 理论上越大越好，例如 3000
 
 # 为了避免 openai key 暴露，我采用了环境变量注入方式，例如
 # export OPENAI_API_KEY=YOUR_API_KEY
@@ -32,7 +39,7 @@ def parse_args():
     return args
 
 
-def get_file_list(source_root, extensions=('md',)) -> [list, dict]:
+def get_file_list(source_root, extensions=EXTENSIONS) -> [list, dict]:
     is_dir = os.path.isdir(source_root)
     is_file = os.path.splitext(source_root)[-1].lower() in extensions
 
@@ -102,14 +109,17 @@ def create_embedding(text):
 
 
 class QA:
-    def __init__(self, doc_embeddings) -> None:
-        index = faiss.IndexFlatL2(1536)
+    def __init__(self, doc_embeddings, verbose=False) -> None:
+        # https://github.com/facebookresearch/faiss/wiki/Getting-started
+        # 直接计算 L2 距离
+        index = faiss.IndexFlatL2(OUT_EMBEDDING_DIM)
         embe = np.array([emm[1] for emm in doc_embeddings])
         data = [emm[0] for emm in doc_embeddings]
         index.add(embe)
         self.index = index
         self.data = data
-        self.limit = 10
+        self.topk = TOPK
+        self.verbose = verbose
 
     def __call__(self, query):
         embedding = create_embedding(query)
@@ -118,17 +128,18 @@ class QA:
         return answer, context
 
     def get_texts(self, embeding):
-        _, text_index = self.index.search(np.array([embeding]), self.limit)
+        _, text_index = self.index.search(np.array([embeding]), self.topk)
         context = []
         for i in list(text_index[0]):
-            context.extend(self.data[i:i + 5])
+            # 一条有用的信息可能会非常多段，因为我们是原格式读取，或存在不少换行啥的
+            context.extend(self.data[i:i + EXTRA_PADDING_NUM])
         return context
 
     def completion(self, query, context):
         """Create a completion."""
         lens = [len(text) for text in context]
 
-        maximum = 3000
+        maximum = MAX_INPUT_TOKEN
         for index, l in enumerate(lens):
             maximum -= l
             if maximum < 0:
@@ -145,7 +156,7 @@ class QA:
                 {'role': 'user', 'content': query},
             ],
         )
-        print("使用的 tokens：", response.usage.total_tokens)
+        print("使用的 tokens 数：", response.usage.total_tokens)
         return response.choices[0].message.content
 
 
@@ -159,7 +170,7 @@ if __name__ == '__main__':
     else:
         doc_embeddings = pickle.load(open(args.embedding_path, 'rb'))
 
-    qa = QA(doc_embeddings)
+    qa = QA(doc_embeddings, args.verbose)
 
     while True:
         query = input("请输入查询(help可查看指令)：")
@@ -172,6 +183,7 @@ if __name__ == '__main__':
         if args.verbose:
             print("已找到相关片段：")
             for text in context:
+                print("-------片段-----")
                 print('\t', text)
             print("=====================================")
         print("回答如下\n\n")
