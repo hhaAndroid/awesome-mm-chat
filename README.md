@@ -17,7 +17,7 @@ BERT 和 GPT 系列是 NLP 领域的两大基石，因此对这两个模型的�
 官方地址： https://github.com/hwchase17/langchain  
 文档： https://python.langchain.com/en/latest/  
 
-具体见 [langchain](langchain.md)
+具体见 [langchain](langchain/langchain.md)
 
 ## PEFT
 
