@@ -59,6 +59,7 @@ tools = [
     )
 ]
 
+# 带有 {} 的内容会在 CustomPromptTemplate 里面以 key 的形状填充真实值
 template_zh = """按照给定的格式回答以下问题。你可以使用下面这些工具：
 
 {tools}
