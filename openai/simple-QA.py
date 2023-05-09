@@ -22,7 +22,7 @@ MAX_INPUT_TOKEN = 1000  # 输入给 gpt 的最大 token 长度, 理论上越大�
 # export OPENAI_API_KEY=YOUR_API_KEY
 
 # refer from https://github.com/fierceX/Document_QA
-# faiss 安装命令： conda install -c faiss-cpu
+# faiss 安装命令： conda install -c pytorch faiss-cpu
 # 第一次运行会创建 embedding 文件，第二次运行直接读取
 # python simple-QA.py --source ‘你的包括大量 md 文件夹的源文件夹路径，也可以是单个 md 文件’ --embedding-path `保存的 pkl 文件名`
 # python simple-QA.py --source /mmyolo/docs/zh_cn --embedding-path source_embedding.pkl
