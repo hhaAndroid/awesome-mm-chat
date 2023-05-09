@@ -13,6 +13,8 @@ text_embedding_model = "text-embedding-ada-002"
 OUT_EMBEDDING_DIM = 1536  # text_embedding_model 输出维度
 chatgpt_model = 'gpt-3.5-turbo'
 
+# 可优化： https://github.com/imClumsyPanda/langchain-ChatGLM/blob/master/chains/text_load.py
+
 # TOPK×EXTRA_PADDING_NUM=25,也就是说每次查询会输入最多 25 和片段进行，最大不超过 MAX_INPUT_TOKEN
 TOPK = 3  # 选择数据库里面 topk 条组成 prompt
 EXTRA_PADDING_NUM = 5  # 核心参数，对于数据库中被选择的每条参考文本，额外扩展连续的 n 个 item，因为考虑在处理时候会非常多个 item
@@ -24,8 +26,8 @@ MAX_INPUT_TOKEN = 1000  # 输入给 gpt 的最大 token 长度, 理论上越大�
 # refer from https://github.com/fierceX/Document_QA
 # faiss 安装命令： conda install -c pytorch faiss-cpu
 # 第一次运行会创建 embedding 文件，第二次运行直接读取
-# python simple-QA.py --source ‘你的包括大量 md 文件夹的源文件夹路径，也可以是单个 md 文件’ --embedding-path `保存的 pkl 文件名`
-# python simple-QA.py --source /mmyolo/docs/zh_cn --embedding-path source_embedding.pkl
+# python simple-qa-v1.py --source ‘你的包括大量 md 文件夹的源文件夹路径，也可以是单个 md 文件’ --embedding-path `保存的 pkl 文件名`
+# python simple-qa-v1.py --source /mmyolo/docs/zh_cn --embedding-path source_embedding.pkl
 
 
 def parse_args():
