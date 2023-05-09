@@ -83,6 +83,7 @@ Question: {input}
 """
 
 
+# llm 在调用推理接口前，会触发模板，形成输入 prompt
 class CustomPromptTemplate(StringPromptTemplate):
     template: str  # 标准模板
     tools: List[Tool]  # 可使用工具集合
@@ -106,7 +107,7 @@ class CustomPromptTemplate(StringPromptTemplate):
         kwargs["tools"] = "\n".join([f"{tool.name}: {tool.description}" for tool in self.tools])  # 枚举所有可使用的工具名+工具描述
         kwargs["tool_names"] = ", ".join([tool.name for tool in self.tools])  # 枚举所有的工具名称
         cur_prompt = self.template.format(**kwargs)
-        print(cur_prompt)
+        print('CustomPromptTemplate == ', cur_prompt, '====')
         return cur_prompt
 
 
@@ -117,6 +118,7 @@ prompt = CustomPromptTemplate(
 )
 
 
+# 对 llm 的输出进行解析，返回特定对象，用于 agent 进行下一步的决策
 class CustomOutputParser(AgentOutputParser):
 
     def parse(
@@ -136,6 +138,7 @@ class CustomOutputParser(AgentOutputParser):
             Union[AgentAction, AgentFinish]: _description_
         """
         if "Final Answer:" in llm_output:  # 如果句子中包含 Final Answer 则代表已经完成
+            # 表示完成
             return AgentFinish(
                 return_values={"output": llm_output.split("Final Answer:")[-1].strip()},
                 log=llm_output,
@@ -147,12 +150,18 @@ class CustomOutputParser(AgentOutputParser):
             raise ValueError(f"Could not parse LLM output: `{llm_output}`")
         action = match.group(1).strip()
         action_input = match.group(2)
-
+        # 返回动作，agent 会自动调用工具
         return AgentAction(tool=action, tool_input=action_input.strip(" ").strip('"'), log=llm_output)
 
 
 output_parser = CustomOutputParser()
 
+# Temperature 是一个超参数，可用于控制生成语言模型中生成文本的随机性和创造性, 它用于调整模型的softmax输出层中预测词的概率
+# 当 Temperature 设置为较低的值时，预测词的概率会变尖锐，这意味着选择最有可能的词的概率更高, 这会产生更保守和可预测的文本，
+# 因为模型不太可能生成意想不到或不寻常的词。 另一方面，当Temperature 设置为较高值时，预测词的概率被拉平，这意味着所有词被选择的可能性更大,
+# 这会产生更有创意和多样化的文本，因为模型更有可能生成不寻常或意想不到的词
+
+# temperature 越小，生成的文本越保守，temperature 越大则生成的文本越有创造性
 llm = OpenAI(temperature=0)
 llm_chain = LLMChain(
     llm=llm,
@@ -160,10 +169,12 @@ llm_chain = LLMChain(
 )
 
 tool_names = [tool.name for tool in tools]
+
+# 每次只运行一次 plan 即每次只运行一个工具
 agent = LLMSingleActionAgent(
     llm_chain=llm_chain,
     output_parser=output_parser,
-    stop=["\nObservation:"],
+    stop=["\nObservation:"],  # 停止条件
     allowed_tools=tool_names
 )
 
