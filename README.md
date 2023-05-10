@@ -1,6 +1,11 @@
 # awesome-mm-chat
 多模态 MM +Chat 合集
 
+## MiniGPT4 解读
+
+具体见 [minigpt4](minigpt4.md)
+
+
 ## 模型部分
 
 BERT 和 GPT 系列是 NLP 领域的两大基石，因此对这两个模型的结构进行详细分析是非常有必要。
@@ -65,7 +70,5 @@ Fork 并注释版本： https://github.com/hhaAndroid/GLIP/tree/hha
 具体见 [GLIP 解读](GLIP.md)
 
 ## BLIP 解读
-
-## MiniGPT4 解读
 
 ## DINOv2 解读
