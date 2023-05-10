@@ -90,5 +90,11 @@ python demo.py --cfg-path eval_configs/minigpt4_eval.yaml  --gpu-id 0
 
 中文效果差点，在经过提示了可以回答出来。
 
+OCR 任务也还行
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/c5c01053-f408-4df3-bd2e-eb1283c1363b"/>
+</div>
+
 整体来说 minigpt-4 13b 模型效果还是非常 ok 的。
 
