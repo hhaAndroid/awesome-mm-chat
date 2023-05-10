@@ -5,6 +5,10 @@
 
 具体见 [minigpt4](minigpt4.md)
 
+## DetGPT 解读
+
+具体见 [detgpt](detgpt.md)  
+
 
 ## 模型部分
 
