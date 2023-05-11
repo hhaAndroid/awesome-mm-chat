@@ -8,6 +8,9 @@
 官方地址：https://github.com/OptimalScale/DetGPT  
 project 地址： https://detgpt.github.io/   
 
+知乎详细解读版本： https://zhuanlan.zhihu.com/p/628631687
+
+
 从标题上可以大概看出，DetGPT 是通过输入文本来推理进行特定物体检测。
 
 - 常规的目标检测是在特定类别上训练，然后给定图片将对应类别的所有物体都检测出来
