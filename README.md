@@ -9,6 +9,9 @@
 
 具体见 [detgpt](detgpt.md)  
 
+## Transformer Agent
+
+具体见 [agent](transformer_agent.md)
 
 ## 模型部分
 
