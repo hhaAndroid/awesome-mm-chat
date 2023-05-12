@@ -1,6 +1,10 @@
 # awesome-mm-chat
 多模态 MM +Chat 合集
 
+## LLaMA 解读
+
+具体见 [llama](LLaMA.md)
+
 ## MiniGPT4 解读
 
 具体见 [minigpt4](minigpt4.md)
