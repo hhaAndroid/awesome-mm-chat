@@ -5,6 +5,10 @@
 
 具体见 [llama](LLaMA.md)
 
+## stanford_alpaca
+
+具体见 [stanford_alpaca](stanford_alpaca.md)
+
 ## MiniGPT4 解读
 
 具体见 [minigpt4](minigpt4.md)
