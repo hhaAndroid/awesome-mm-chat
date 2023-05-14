@@ -9,6 +9,15 @@
 
 具体见 [stanford_alpaca](stanford_alpaca.md)
 
+## Vicuna 小羊驼
+Vicuna 是 一个开源聊天机器人，号称达到了 ChatGPT 的 90%，也是基于 LLaMA 通过指令微调而来。
+
+Vicuna 开源代码地址：https://github.com/lm-sys/FastChat    
+Fork 并注释版本： https://github.com/hhaAndroid/FastChat/tree/hha    
+
+具体见 [Vicuna 小羊驼](vicuna.md)
+
+
 ## MiniGPT4 解读
 
 具体见 [minigpt4](minigpt4.md)
@@ -58,14 +67,6 @@ Parameter-Efficient Fine-Tuning
 开源地址：https://github.com/open-mmlab/Multimodal-GPT  
 
 具体见 [mmgpt](mmgpt.md)
-
-## Vicuna 小羊驼
-Vicuna 是 一个开源聊天机器人，号称达到了 ChatGPT 的 90%，也是基于 LLaMA 通过指令微调而来。
-
-Vicuna 开源代码地址：https://github.com/lm-sys/FastChat    
-Fork 并注释版本： https://github.com/hhaAndroid/FastChat/tree/hha    
-
-具体见 [Vicuna 小羊驼](vicuna.md)
 
 ## CLIP 解读
 

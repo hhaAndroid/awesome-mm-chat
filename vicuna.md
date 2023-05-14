@@ -5,6 +5,23 @@ Vicuna 开源代码地址：https://github.com/lm-sys/FastChat
 
 Fork 并注释版本： https://github.com/hhaAndroid/FastChat/tree/hha
 
+## 原理和其他
+
+要特别注意对比 Alpaca 的区别。
+
+博客地址：https://lmsys.org/blog/2023-03-30-vicuna/
+知乎： https://zhuanlan.zhihu.com/p/618389519
+
+没有论文。
+
+- 训练数据不一样，Alpaca 采用的是 52K 通过 Self-Instruct 生成的数据，而 Vicuna 是用了  70K user-shared ChatGPT conversations 数据集
+- 评估方式更加智能，通过构建 prompt 让 ChatGPT4 打分
+- 基于 Alpaca 开源代码，改进了代码，更省显存，训练更加高效。在分布式部署方面做的更好
+
+相同点： 都是全量微调，但是好像性能比 Alpaca 强。
+
+
+
 ## CentOS 7 + 32G V100 本地部署流程
 使用环境： PyTorch 1.9， CUDA 11.1
 
