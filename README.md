@@ -17,6 +17,10 @@ Fork 并注释版本： https://github.com/hhaAndroid/FastChat/tree/hha
 
 具体见 [Vicuna 小羊驼](vicuna.md)
 
+## BLIP 解读
+
+具体见 [BLIP 和 BLIP2 解读](BLIP.md)
+
 
 ## MiniGPT4 解读
 
@@ -29,7 +33,6 @@ Fork 并注释版本： https://github.com/hhaAndroid/FastChat/tree/hha
 ## Transformer Agent
 
 具体见 [agent](transformer_agent.md)
-
 
 ## 模型部分
 
@@ -90,6 +93,5 @@ Fork 并注释版本： https://github.com/hhaAndroid/GLIP/tree/hha
 
 具体见 [InternGPT](InternGPT.md)
 
-## BLIP 解读
 
 ## DINOv2 解读
