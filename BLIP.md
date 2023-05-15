@@ -275,5 +275,60 @@ with torch.no_grad():
 <img src="https://github.com/salesforce/BLIP/assets/17425982/c1add1dc-dd96-40e0-8de4-02fa3cdf806f"/>
 </div>
 
-## BLIP2
+## BLIP-2
+
+论文： BLIP-2: Bootstrapping Language-Image Pre-training with Frozen Image Encoders and Large Language Models
+地址： https://arxiv.org/abs/2301.12597
+github: https://github.com/salesforce/LAVIS/tree/main/projects/blip2
+
+BLIP 和其他多模态算法一样，预训练成本太高了。如果可以利用强大的预训练好的视觉和语言模型，并且估计这些大模型，而仅仅训练连接层，那将可以极大的提升训练效率。
+
+BLIP-2采用了一种通用且高效的预训练策略，它从现成的固定的预训练图像编码器和固定的大型语言模型中引导视觉语言预训练。BLIP-2使用轻量级 Q-Former 弥补了模式上的差距，该转换器分两个阶段进行预训练。
+
+1. 第一阶段从固定图像编码器中引导视觉语言表示学习，强制 Q-Former 学习与文本最相关的视觉表示
+2. 第二阶段从一个固定的语言模型中引导视觉到语言的生成学习，使其输出的视觉表示可以被LLM解释。
+
+尽管比现有方法具有更少的可训练参数，但 BLIP-2 在各种视觉语言任务上实现了最先进的性能。
+
+<div align=center>
+<img src="https://github.com/salesforce/BLIP/assets/17425982/5d945855-8db4-432e-91c8-735fcac3eee9"/>
+</div>
+
+### 原理说明
+
+从上面简要的结构图可以大概看出原理。
+
+- Q-Former 算一个模态桥接器，用户将视觉特征转换为后续 LLM 能够理解的语言特征，如果 Q-Former 也同时输入了 text，那么 text 算是一个辅助 query, 首先将 text 特征和可学习 queries 进行信息融合，然后再将视觉特征转换为后续 LLM 能够理解的语言特征
+- Q-Former 输出语言特征后，输入到 LLM 中即可进行自回归进行生成任务，如果是检索任务，则不需要 LLM，直接将 Q-Former 的输出，然后进行检索即可
+- 可学习 queries 学习全局信息，同时还可以不同规模的视觉编码器和 LLM 都是统一大小输入和输出，因为不管模型多大，可学习 queries 输出维度是固定的
+
+**Q-Former 实际上就是 BERT 模型。**
+
+下面分析两个阶段的预训练过程。
+
+**(1) 第一阶段预训练**
+
+<div align=center>
+<img src="https://github.com/salesforce/BLIP/assets/17425982/456deee4-efa4-4b6c-a39c-43775100b318"/>
+</div>
+
+可以发现和 BLIP 训练过程非常类似。也是包括了 3 个 loss
+
+1. 图片输入到固定的 ViT 中抽取视觉特征
+2. 对于 Image-Text Contrastive Learning Loss 分支， 将可学习 queries 输入到 Q-Former 的自注意力层中，然后将 text 也输入到 Q-Former 的自注意力层中，注意： 对比学习是希望视觉特征和文本特征对齐，
+如果在计算自注意力时候，存在 queries 和 text 之间的计算，那么必然会导致 text 信息泄露进来，后续和图像特征进行交叉注意力时候，其实就存在信息泄露了，这违背了对比学习过程，其实就变成了后面的匹配学习。 故为了避免信息泄露，在计算
+自注意力时候，只能让 queries 和 queries 之间计算，text 和 text 之间计算，不能让 queries 和 text 进行计算。 如果你依然不能理解，那么可以看下 BLIP 的 Image-Text Contrastive Learning Loss 过程
+3. 对于 Image-TextMatching loss 则没有上述限制，因为图片匹配学习本身就是需要融合，text 信息和 queries 都是平等的
+4. 对于 Image-GroundedText Generation loss，因此这是生成任务，输入的 text 是整个句子，当前 text 在计算自注意力时候不能知道后面的词，否则就是信息泄露了，例如 text =a cat wearing sunglasses 时候，如果要
+计算 cat 后面的单词 wearing，那么 cat 这个词计算自注意力时候只能和前面的 a 单词计算，不能和后面的 wearing sunglasses 计算，那就是数据泄露了，答案都知道了还训练啥。
+
+如果不太理解这个 mask 的操作，可以回去看下 BLIP 的 预训练过程，应该就会有清晰的理解。
+
+**(2) 第二阶段预训练**
+
+<div align=center>
+<img src="https://github.com/salesforce/BLIP/assets/17425982/82d72627-0dfb-4239-8bea-fb2bfd154a89"/>
+</div>
+
+这个训练过程就比较清晰易懂了。针对两种不同的 LLM 模型，有两种不同的训练方式。
 
