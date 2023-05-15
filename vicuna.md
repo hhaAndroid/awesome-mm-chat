@@ -20,6 +20,31 @@ Fork 并注释版本： https://github.com/hhaAndroid/FastChat/tree/hha
 
 相同点： 都是全量微调，但是好像性能比 Alpaca 强。
 
+训练仅使用 ShareGPT 等公开数据，而不是我们自己调用ChatGPT API 生成数据，基于 ShareGPT (70K user-shared ChatGPT conversations) 维护者的意愿，仅公开模型和训练方法，而不会公开和ShareGPT相关的训练数据，但是开源项目中包括了数据清理的部分
+
+评估是一个比较大的问题，作者是用 ChatGPT4，通过构建 prompt 来给不同模型输出进行打分，但是也是需要 human-in-the-loop，要看下 ChatGPT4 评估的是否合理。
+
+我们让 Vicuna 和其他模型的回答以匿名的方式合并在一起，让 GPT-4 比较它们，给每一个模型 1-10 的评分。然后我们对每一对模型回答的所有问题的所有评分各自求和，得到总分。在这个条件下，我们达到了ChatGPT-3.5 性能的90%。
+
+The cost of training Vicuna-13B is around $300。注意他不是 PEFT 微调而是全量微调。
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/02808565-70a9-4f81-8df2-94d9e71e34b9"/>
+</div>
+
+首先，我们从ShareGPT.com收集了大约7万个对话，这是一个用户可以分享他们的ChatGPT对话的网站。接下来，我们加强了Alpaca提供的训练脚本，以更好地处理多轮对话和长序列。训练是在一天内用PyTorch FSDP在8个A100 GPU上完成的。为了给演示提供服务，我们实施了一个轻量级的分布式服务系统。我们通过创建一组80个不同的问题并利用GPT-4来判断模型的输出，对模型质量进行了初步评估。为了比较两个不同的模型，我们将每个模型的输出合并为每个问题的单一提示。然后，这些提示被发送到GPT-4，由GPT-4评估哪个模型能提供更好的回答。
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/d6cf5fe3-bddf-42a5-a498-8b530ed08934"/>
+</div>
+
+训练时候为了确保数据质量，我们将HTML转换回markdown，并过滤掉一些不合适或低质量的样本。此外，我们将冗长的对话分成较小的片段，以符合模型的最大上下文长度。
+
+我们的训练配方建立在斯坦福大学羊驼的基础上，有以下改进。
+
+- 内存优化： 为了使Vicuna能够理解长上下文，我们将最大上下文长度从alpaca的512扩展到**2048**，这大大增加了GPU的内存需求。我们通过利用gradient checkpointing and [flash attention](https://arxiv.org/abs/2205.14135) 来解决内存压力。
+- 多轮对话： 我们调整训练损失以考虑到多轮对话，并仅根据聊天机器人的输出计算微调损失。
+- Cost Reduction via Spot Instance： 40倍的数据集和4倍的序列长度给训练费用带来了巨大的挑战。我们采用 SkyPilot managed spot (好像是一个管理机) 来降低成本，利用较便宜的实例，自动恢复抢占和自动区域切换。这个解决方案将7B模型的训练成本从500美元降至140美元左右，13B模型的训练成本从1千美元降至300美元左右。
 
 
 ## CentOS 7 + 32G V100 本地部署流程
