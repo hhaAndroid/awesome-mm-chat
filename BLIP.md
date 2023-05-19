@@ -1,5 +1,10 @@
 # BLIP 和 BLIP2 和 InstructBLIP
 
+## 前置
+
+在开始多模态前，可以先看看 B 站李沫老师的多模态串讲视频，可以事半功倍。下面是视频笔记。
+
+
 ## BLIP
 论文： BLIP: Bootstrapping Language-Image Pre-training for Unified Vision-Language Understanding and Generation   
 论文地址：https://arxiv.org/abs/2201.12086      

@@ -17,6 +17,10 @@ Fork 并注释版本： https://github.com/hhaAndroid/FastChat/tree/hha
 
 具体见 [Vicuna 小羊驼](vicuna.md)
 
+## OpenSet 开放集统一架构
+
+具体见 [OpenSet](open_set.md)
+
 ## BLIP 解读
 
 具体见 [BLIP 和 BLIP2 解读](BLIP.md)

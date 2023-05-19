@@ -353,6 +353,12 @@ classifier(
 - 我们使用非常大的32,768个小批量。混合精度用于加速训练和节省内存。为了节省额外的内存，梯度检查点、半精度Adam 统计和半精度随机四舍五入文本编码器权重。嵌入相似度的计算也被分片，单个gpu只计算其局部批次嵌入所需的成对相似度的子集。可以看出要想训练起来需要不少 trick
 
 
+## Improved baselines for vision-language pre-training
+
+论文地址：https://arxiv.org/pdf/2305.08675.pdf
+未开源
+
+
 
 
 
