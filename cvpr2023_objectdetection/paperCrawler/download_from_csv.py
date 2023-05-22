@@ -38,8 +38,16 @@ if __name__ == '__main__':
 
     paper_infos = load_paper_info(args.src)
 
+    # 不下载无关论文
+    filterd_paper_infos = []
+    for paper_info in paper_infos:
+        if int(paper_info.relevant) != 3:
+            filterd_paper_infos.append(paper_info)
+
+    print('The total number of filted paper is', len(filterd_paper_infos))
+
     with ThreadPoolExecutor(max_workers=args.threads) as executor:
         for _ in tqdm(
-                executor.map(download_paper, paper_infos),
-                total=len(paper_infos)):
+                executor.map(download_paper, filterd_paper_infos),
+                total=len(filterd_paper_infos)):
             pass
