@@ -15,6 +15,7 @@ class paper_info:
     pdf_url: Optional[str] = None
     code_url: Optional[str] = None
     relevant: Optional[int] = None
+    tran_flag: Optional[int] = None
 
 
 def load_paper_info(src_file):
@@ -34,6 +35,20 @@ def load_paper_info(src_file):
 
         if isinstance(item['code_url'], str):
             paper.code_url = item['code_url']
+
+        paper.relevant = -1
+        if 'relevant' in item:
+            try:
+                paper.relevant = int(item['relevant'])
+            except Exception as e:
+                paper.relevant = -1
+
+        paper.tran_flag = -1
+        if 'relevant' in item:
+            try:
+                paper.tran_flag = str(item['tran_flag'])
+            except Exception as e:
+                paper.tran_flag = -1
 
         papers.append(paper)
 
@@ -59,5 +74,5 @@ def filter_papers(papers, keywords, reversed_keywords):
                         break
                 if not is_in_reversed:
                     filtered_papers.append(paper)
-                break
+                    break
     return filtered_papers

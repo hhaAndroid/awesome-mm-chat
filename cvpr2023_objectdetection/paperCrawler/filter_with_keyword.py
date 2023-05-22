@@ -7,21 +7,38 @@ keywords = [
     'object detection',
     'instance segmentation',
     'panoptic segmentation',
+    'open-vocabulary',
+    'open vocabulary',
+    'open world'
 ]
 
 reversed_keywords = [
     '3d',
+    'bev',
     'active detection',
+    'boundary detection',
     'anomaly',
     'oriented',
     'point cloud',
+    'video instance segmentation',
+    'semantic segmentation',
+    'tracking',
+    'video object',
+    'video',
     'attribute recognition',
     '4d instance segmentation',
     'salient object detection',
     'pose estimation',
-    'LiDAR',
+    'lidar',
+    'acoustic',
     'few-shot',
     'cross-domain',
+    'cross domain',
+    'domain adaptive',
+    'domain adaptation',
+    'adaptation',
+    'attacks',
+    'graph generation',
     'video segmentation'
 ]
 
