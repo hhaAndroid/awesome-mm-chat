@@ -14,6 +14,7 @@ class paper_info:
     pdf_path: Optional[str] = None
     pdf_url: Optional[str] = None
     code_url: Optional[str] = None
+    relevant: Optional[int] = None
 
 
 def load_paper_info(src_file):
