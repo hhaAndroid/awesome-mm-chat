@@ -155,6 +155,6 @@ python download_papers.py chatgpt_filted_cvpr2023.csv
 
 不过考虑到本文所总结的论文不多，手动梳理思维导图和总结其实也不用多久。
 
-经过快速的人工确认和补充(大概 20 分钟)，最终的思维导入和文档地址为： https://aicarrier.feishu.cn/docx/ExYodTuONox8W4xSrVmczRq1nId
+经过快速的人工确认和补充(大概 20 分钟)，最终的思维导入和文档地址为： 
 可能还是有些遗漏，欢迎大家补充。
 
