@@ -151,5 +151,15 @@ image_list = image_list.to(self.device)
 4. 会增加一个额外的 [NoObj] token 在句子结尾
 
 
+mmdet dev-3.x 已经实现了 GLIP 推理和评估。可以直接查看代码，比看本文容易些。
+
+# GLIP v2
+
+论文： GLIPv2: Unifying Localization and Vision-Language Understanding
+
+虽然没有开源，但是也可以看看，学习下。
+
+GLIP v1 只是支持了一个 grounding object detection 任务，而 v2 支持了更多的任务，包括 localization tasks (e.g., object detection, instance segmentation) and Vision-Language (VL) understanding tasks (e.g., VQA, image captioning).
+
 
 

@@ -153,7 +153,7 @@ return all_cls_scores, all_mask_preds
 
 - 首先，我们在Transformer解码器中使用 mask attention，它将注意力限制在以预测片段为中心的局部特征上，这些特征可以是对象或区域，具体取决于分组的特定语义。与标准Transformer解码器中使用的交叉注意(关注图像中的所有位置)相比，我们的 mask attention 可以更快地收敛并提高性能.
 - 其次，我们使用 multi-scale high-resolution features 来帮助模型分割小物体/区域。
-- 第三，我们提出了 optimization improvements，如切换自注意力和交叉注意力的顺序，使 query features 可学习，并 移除 dropout，所有这些都可以在不增加计算的情况下提高性能
+- 第三，我们提出了 optimization improvements，如切换自注意力和交叉注意力的顺序，使 query features 可学习，并移除 dropout，所有这些都可以在不增加计算的情况下提高性能
 - 最后，我们通过 calculating mask loss on few randomly sampled points 来节省 3×training 内存，而不影响性能。
 
 结构图如下：
@@ -174,9 +174,9 @@ return all_cls_scores, all_mask_preds
 
 ### Mask Attention
 
-基于transformer的模型的缓慢收敛是由于交叉注意层中的全局上下文，因为交叉注意需要许多次训练才能学会关注局部对象区域。
+基于 transformer 的模型的缓慢收敛是由于交叉注意层中的全局上下文，因为交叉注意需要许多次训练才能学会关注局部对象区域。
 
-Mask2Former 主要改动在于 Decoder, 提出了所谓的 masked attention 操作。其作用是通过将交叉注意力限制在每个query的预测掩码的前景区域内来提取局部特征，而不是关注整个特征图，可以大幅减少计算量和减少显存，提升收敛速度。
+Mask2Former 主要改动在于 Decoder, 提出了所谓的 masked attention 操作。其作用是通过将交叉注意力限制在每个query的预测掩码的前景区域内来提取局部特征，而不是关注整个特征图，可以大幅提升收敛速度。
 
 masked attention 的 mask 来自上一次 decoder 的输出并通过预测后的语义 mask 通过阈值 0.5 来二值化，实现自举。
 
@@ -223,6 +223,75 @@ mask_feature = self.mask_feature(outs[-1])
 
 # mask_feature 没有变，依然是最大尺度尺度，但是 feature 变成了多尺度特征，而且只取了后面的 3 个
 return mask_feature, multi_scale_features
+```
+
+在得到多尺度特征后，按照 multi_scale_features 层的顺序一次和 decoder 中的 transformer layer 进行交互。
+
+```python
+# multi_scale_memorys (from low resolution to high resolution)
+decoder_inputs = []
+decoder_positional_encodings = []
+# 对 multi_scale_features 进行处理，加上 可学习的 level embed 和 decoder_positional_encoding
+for i in range(self.num_transformer_feat_level):
+    decoder_input = self.decoder_input_projs[i](multi_scale_memorys[i])
+    # shape (batch_size, c, h, w) -> (batch_size, h*w, c)
+    decoder_input = decoder_input.flatten(2).permute(0, 2, 1)
+    level_embed = self.level_embed.weight[i].view(1, 1, -1)
+    decoder_input = decoder_input + level_embed
+    # shape (batch_size, c, h, w) -> (batch_size, h*w, c)
+    mask = decoder_input.new_zeros(
+        (batch_size, ) + multi_scale_memorys[i].shape[-2:],
+        dtype=torch.bool)
+    decoder_positional_encoding = self.decoder_positional_encoding(
+        mask)
+    decoder_positional_encoding = decoder_positional_encoding.flatten(
+        2).permute(0, 2, 1)
+    decoder_inputs.append(decoder_input)
+    decoder_positional_encodings.append(decoder_positional_encoding)
+```
+
+为了得到 mask attention，需要先推理一遍
+
+```python
+# shape (num_queries, c) -> (batch_size, num_queries, c)
+query_feat = self.query_feat.weight.unsqueeze(0).repeat(
+    (batch_size, 1, 1))
+query_embed = self.query_embed.weight.unsqueeze(0).repeat(
+    (batch_size, 1, 1))
+cls_pred_list = []
+mask_pred_list = []
+cls_pred, mask_pred, attn_mask = self._forward_head(
+    query_feat, mask_features, multi_scale_memorys[0].shape[-2:])
+```
+
+query_feat 可学习是 mask2former 的改进，maskformer 里面这个值是不可以学习的，初始化是0，假装 query_feat 已经更新了，可以推理一遍得到 atten_mask
+
+开始对 decoder layer 进行推理
+
+```python
+# self.num_transformer_decoder_layers=9
+# self.num_transformer_feat_level=3
+# 说明 0 decoder -> 0 多尺度特征； 1 decoder -> 1 多尺度特征； 2 decoder -> 2 多尺度特征； 3 decoder -> 0 多尺度特征, 交错排布
+for i in range(self.num_transformer_decoder_layers):
+    level_idx = i % self.num_transformer_feat_level
+    # if a mask is all True(all background), then set it all False.
+    attn_mask[torch.where(
+        attn_mask.sum(-1) == attn_mask.shape[-1])] = False
+    # cross_attn + self_attn
+    layer = self.transformer_decoder.layers[i]
+    query_feat = layer(
+        query=query_feat, # 可学习
+        key=decoder_inputs[level_idx],
+        value=decoder_inputs[level_idx],
+        query_pos=query_embed, # 可学习
+        key_pos=decoder_positional_encodings[level_idx],
+        cross_attn_mask=attn_mask,
+        query_key_padding_mask=None,
+        # here we do not apply masking on padded region
+        key_padding_mask=None)
+    cls_pred, mask_pred, attn_mask = self._forward_head(
+        query_feat, mask_features, multi_scale_memorys[
+            (i + 1) % self.num_transformer_feat_level].shape[-2:])
 ```
 
 ## X-Decoder
@@ -303,7 +372,7 @@ X-Decoder 在诸多数据集上联合预训练，使其具备了各个任务的 
 <img src="https://github.com/salesforce/BLIP/assets/17425982/fcc3df36-d31b-4741-9016-b9af6d519573"/>
 </div>
 
-如果要非常清晰的理解这个图，需要对 Mask2Former 架构图有一定了解。待补充...
+如果要非常清晰的理解这个图，需要对 Mask2Former 架构图有一定了解。
 
 通用语义分割和 Referring Segmentation 比较好理解，基于语义输出然后转换为像素级输出即可完成像素级任务。对于图像-文本检索和图片描述稍微不一样，需要语义输出，后续结合代码再分析。
 
@@ -334,4 +403,159 @@ X-Decoder 在诸多数据集上联合预训练，使其具备了各个任务的 
 论文： A Simple Framework for Open-Vocabulary Segmentation and Detection
 链接：https://arxiv.org/pdf/2303.08131.pdf
 github: https://github.com/IDEA-Research/OpenSeeD
+
+## OFA 简单阅读
+
+论文： [OFA: Unifying Architectures, Tasks, and Modalities Through a Simple Sequence-to-Sequence Learning Framework](https://arxiv.org/abs/2202.03052)
+
+在这项工作中，我们追求一种统一的多模态预训练范式，以打破复杂的任务/模态特定定制的支架。我们提出了OFA，一个支持任务全面性的任务无关性和模态无关性框架。OFA在一个简单的seq2seq的学习框架中统一了不同的跨模态和单模态的任务，包括图像生成、视觉定位、图像说明、图像分类、语言模型等。OFA在预训练和微调阶段都遵循基于指令的学习，不需要为下游任务提供额外的特定任务层。与最近的最先进的视觉和语言模型相比，OFA只在2000万个公开的图像-文本对上进行了预训练，这些模型依赖于极其庞大的跨模态数据集。尽管其简单性和相对较小的训练数据，OFA在一系列跨模态任务中取得了新的SOTA，同时在单模态任务中获得了极具竞争力的表现
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmpretrain/assets/17425982/b8958894-44ba-4dbe-8142-e7d30c41025a"/>
+</div>
+
+OFA 支持的任务如上所示。
+
+模型架构如下所示：
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmpretrain/assets/17425982/ff372f80-a704-48e6-aeee-4971e005db05"/>
+</div>
+
+可以看到架构是 a unified Seq2Seq framework。
+
+图像 embedding 选择 ResNet, 文本分词选择 BPE。
+
+如何统一各种模态的输入和输出？ 输入比较好统一，主要关注模态输出。一个可能的解决方案是将文本、图像和object离散化，并在一个统一的单词表中用 token 表示它们。
+
+在文生图领域，已经有图片量化策略来实现这个功能了，可以借助这个策略实现图像 token 化。例如，256 × 256 分辨率的图像表示为长度为 16 × 16 的代码序列。每个离散代码与相应的补丁密切相关
+
+bbox 模态表示就比较容易了，表示为一连串的离散标注，每个标注对应一个 bbox，bbox 整数坐标本质上是单词，因此可以用BPE标注表示。
+
+最后统一词表是文本的subwords，图片的image code和物体的location tokens三者的并集。
+
+我们选择Transformer作为主干架构，并采用编码器-解码器框架作为所有预训练、微调和zero-shot任务的统一架构。具体来说，编码器和解码器都是Transformer层的堆叠。
+
+因为他是一个 seq2seq 任务，以 object 检测为例，他可能并不是总输出有效的 token，因此在推理时候要处理下。在分类任务中存在几个问题： 1.对整个词汇表进行优化是不必要的，而且是效率低下的；2.在推理过程中，该模型可能会从封闭的标签集中产生无效的标签。为了克服这些问题，引入一种基于前缀树的搜索策略。
+
+预训练数据如下：
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmpretrain/assets/17425982/bd96c0be-2e4d-401d-b4dc-830fd8cc0248"/>
+</div>
+
+下游任务微调也是采用和预训练一样的模式即采用指令微调学习。
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmpretrain/assets/17425982/be6c2a55-462e-4eca-b337-b8cef5a8dae7"/>
+</div>
+
+## VisionLLM
+
+论文： [VisionLLM: Large Language Model is also an Open-Ended Decoder for Vision-Centric Tasks](https://arxiv.org/abs/2305.11175)
+暂时还没有开源
+
+和 OFA 非常类似，但是模型做的更大，性能更高，同时接入了羊驼 LLM, 还可以对话啥的。没有实现通用图像分割。下面详细描述。
+
+VisionLLM 的核心意图是一个模型可以做多种视觉和语言任务，架构统一，输入和输出也统一，不需要对不同的下游任务构建不同的输入或者增加模型等。
+
+如果你了解 OFA，那么这个模型就比较好理解了。
+
+结构图如下所示：
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmpretrain/assets/17425982/80a54c4b-1acf-40eb-a0df-6fb1177a89c8"/>
+</div>
+
+包括 3 个模块：
+
+- 一个统一的语言指令，为以视觉为中心的任务定义和定制提供一致的输入。简单来说就是类似 OFA 通过语言构建统一的不同任务的输入，例如图片理解任务， Describe the image <image> in details.  <image> 是 image embedding 的占位符
+- 一个语言导向的图像 tokenizer，它对视觉信息进行编码，与给定的语言提示保持一致，使模型能够有效地理解和解析视觉内容； 其实就是 image embedding 转 lang feature
+- 基于 LLM 的开放式任务解码器，它利用编码的视觉信息和语言指令来产生令人满意的预测或输出。 解码器是核心，也是和 OFA 不一样的主要地方。
+
+这三种设计共同实现了一个灵活和开放的框架，可以处理各种以视觉为中心的任务，并通过语言指令进行不同程度的任务定制。通过语言指令进行任务定制。
+
+注意：基于 LLM 的开放式任务解码器采用的是类似 DETR Query 的模式，并不是 seq2seq 输出是并行的，因此相比 OFA 效率更好。输入 Query 就是上图中的 Language Instructions <text>。下面详细说明
+
+### 统一的语言指令
+参考之前论文做法，
+
+Vision-Language Tasks
+
+- image captioning： The image is <image>. Please generate a caption for the image: 
+- VQA：The image is <image>. Please generate an answer for the image according to the question: <question>
+
+Vision-Only Tasks
+
+典型的如目标检测、实例分割和姿态估计等，考虑到用户描述的不同，作者采用了 self-instruct 方法基于一些样例生成了大量的对应任务描述，训练时候随机选择一个构成训练样本。推理时候一个实例分割语义描述的例子是：
+
+Segment all the objects of category set <class> within the <range> of the image and generate a list of the format
+(c, x1, y1, x2, y2, ..., x8, y8). Here, c represents the index of the class label starting from 0, and (x1, y1, x2, y2, ..., x8, y8) correspond to the offsets of boundary points of the object relative to the center  point. The image is: <image>
+
+range 设置为 512。
+
+### 语言导向的图像 tokenizer
+
+VisionLLM 认为相对于语言信息，图像是一种外语，需要将其转换为能被 llm 理解的 token。具体做法是：
+
+1. 先用 image  backbones 对图片进行特征提取，得到多尺度图片特征
+2. 使用 text encoder 提取文本特征
+3. 通过交叉注意力将语言特征注入到每个尺度的视觉特征中，产生多尺度的语言感知视觉特征，使特征在不同的模式中保持一致。跨模态的特征
+4. 将融合后的多尺度特征输入到 Deformable DETR Encoder 中，这个做法和 Mask2Former 是类似的
+
+上述步骤就可以得到序列长度为 M 的图片 token
+
+### 基于 LLM 的开放式任务解码器
+
+Decoder 是采用 LLM 结构，实际上就是 Alpaca。但是对于以视觉为中心的任务，Alpaca 有一些固有的缺点。
+
+(1) 它的词汇表中只有几个数字标记（如0∼9），这限制了它通过数字定位物体的能力；
+(2) 它使用多个标记来表示类别名称和类名，这导致了一种低效的方案。
+(3) 它是一个因果模型，对于视觉感知任务来说是低效的。在视觉感知任务中效率低下
+
+作者的做法是扩展词汇表，增加了专门为视觉中心任务设计的标记，为以视觉为中心的任务而设计的额外标记。
+
+- 增加了一组位置标记，表示为 {<p-512>, ..., <p0>..., <p512>}、 ..., <p512>}，其中 <p i> 表示离散偏移量。
+- 我们引入了语义无关的分类代号{<c0>, <c1>, ..., <c511>}来代替类别名称代号，这就克服了使用多个代号来表示的低效率问题。例如{"人"：<c0>，"车"：<c1>，"黑猫"：<c2>，...}
+
+为了出来语言模型串行输出低效问题，改成了采用 query 的并行预测。query 并不是随机初始化的，而是和具体任务有关系，如图所示：
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmpretrain/assets/17425982/0b161823-db61-420a-aca1-b61b7035eca9"/>
+</div>
+
+具体实现过程可能要等开源后。训练的 loss 比较简单，因为就是一个分类任务，采用 cross entropy loss。
+
+### 训练细节
+
+训练数据包括 object detection, instance segmentation, visual grounding, image captioning, and visual question answering 方向，具体是：
+
+- COCO2017
+- RefCOCO
+- RefCOCO+
+- RefCOCOg
+- COCO Caption
+- LLaVA-Instruct-150K
+
+用两个图像骨干实现了VisionLLM的两个变体，即ResNet和InternImage-H。对于语言引导的图像标记器，我们采用 BERTBase作为文本编码器和 Deformable DETR（D-DETR）来捕获高级信息。
+我们将查询次数 M 设定为 100，D-DETR的编码/解码器层数为6。对于LLM，我们采用了Alpaca-7B[，并配备了LoRA进行参数有效的微调。
+
+该模型的训练分为两个阶段。在第一阶段，我们用预先训练好的D-DETR、BERT和Alpaca-7B的权重初始化模型，并训练视觉骨干和语言引导的图像标记器，同时冻结LLM的大部分参数，只有少数LoRA参数除外。为了简化训练的复杂性，在这个阶段，我们主要关注具有随机物体类别和任务描述的物体检测任务。在第二阶段，我们冻结了视觉主干，并引入了多个任务的统一监督。引入对多个任务的统一监督。除非另有说明，训练运行的时间为在4×8的NVIDIA A100 GPU上运行50个epochs。
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmpretrain/assets/17425982/98277983-873d-45e7-bc55-898926538f2e"/>
+</div>
+
+
+一些例子：
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmpretrain/assets/17425982/a5d5f11b-7d2a-42d7-ad40-2cc79ee51d29"/>
+</div>
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmpretrain/assets/17425982/418dc07e-9401-4b0f-8d3f-3dab5a73f58d"/>
+</div>
+
+总的来说是一个不错的工作，期待后续开源。
 
