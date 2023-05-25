@@ -161,5 +161,26 @@ mmdet dev-3.x 已经实现了 GLIP 推理和评估。可以直接查看代码，
 
 GLIP v1 只是支持了一个 grounding object detection 任务，而 v2 支持了更多的任务，包括 localization tasks (e.g., object detection, instance segmentation) and Vision-Language (VL) understanding tasks (e.g., VQA, image captioning).
 
+GLv2 优雅地将 localization 预训练和三个视觉语言预训练 (VLP) 任务统一起来：
+
+- phrase grounding 作为检测任务的 VL 重构
+- region-word contrastive learning 作为新的区域词级对比学习任务
+- 掩码语言建模
+
+**这种统一不仅简化了之前的多阶段 VLP 过程，而且在 localization和理解任务之间也实现了互惠互利。这算是 v2 的一个最大改动吧，不仅仅是需要 grounding 目标检测，还同时训练语言模型部分，使其具备多任务能力。**
+
+定位任务是仅视觉的，需要细粒度的输出（例如，边界框或像素掩码），而 VL 理解任务强调两种模态的融合，需要高级语义输出（例如，答案或字幕），如何进行统一？
+
+作者认为： Localization + VL understanding = grounded VL understanding
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/75d76c27-26f1-495f-ad1e-9bb939969ee5"/>
+</div>
+
+从上面架构图可以看出大概做法。输入包括图片和文本，在文本方面不同的任务会采用不同的输入构建形式，经过图片和文本单独的特征提前后，进行 deepfusion，然后在接不同的任务独立的 head 进行预测。
+
+目标检测部分和 GLIP 是一样的，实例分割部分会单独加一个实例分割head。
+
+由于没有任何开源代码，估计也不会开源，因此了解下核心思想就行。可以看出其实也不是真正的大一统，大一统应该是类似 OFA 或者 VisionLLM 或者 X-Decoder 一样。
 
 
