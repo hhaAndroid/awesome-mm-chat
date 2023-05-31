@@ -17,6 +17,10 @@ Fork 并注释版本： https://github.com/hhaAndroid/FastChat/tree/hha
 
 具体见 [Vicuna 小羊驼](vicuna.md)
 
+## mmpretrain 多模态部分
+
+具体见 [mmpretrain](mmpretrain.md)
+
 ## OpenSet 开放集统一架构
 
 具体见 [OpenSet](open_set.md)

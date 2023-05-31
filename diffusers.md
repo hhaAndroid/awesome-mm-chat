@@ -85,3 +85,8 @@ sks 是唯一标识符，用户可以自定义，但是最好不要和其他的�
 
 https://huggingface.co/docs/diffusers/training/controlnet
 
+
+## ControlGPT
+
+[Controllable Text-to-Image Generation with GPT-4](https://arxiv.org/pdf/2305.18583.pdf)
+

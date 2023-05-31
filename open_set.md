@@ -559,3 +559,28 @@ Decoder 是采用 LLM 结构，实际上就是 Alpaca。但是对于以视觉为
 
 总的来说是一个不错的工作，期待后续开源。
 
+## PaLI-X
+
+[PaLI-X: On Scaling up a Multilingual Vision and Language Model](https://arxiv.org/abs/2305.18565)
+
+很强。
+
+摘要： 本文介绍了 PaLI-X，一种多语言视觉和语言模型的训练方法和结果，涉及模型尺度大小和训练任务混合。我们的模型在各种各样的任务中取得了新的性能水平，包括多个基于图像的图像理解和问答任务、基于图像的文档理解和少样本（上下文内）学习，以及目标检测、视频问答和视频字幕等任务。PaLI-X 在大多数视觉和语言基准测试中都取得了最新的研究成果（超过25个基准测试）。最后，我们观察到新兴的能力，如复杂计数和多语言目标检测，这些任务并未明确纳入训练组合中。
+
+consisting of a pretrained large-capacity visual encoder (using Scaling vision transformers to 22 billion parameters as the starting point) and a pretrained language-only encoder-decoder (using UL2: Unifying language learning paradigms as the
+starting point), further trained at-scale on a vision-and-language data mixture using a combination of self-supervision and full-supervision signals
+
+需要先了解 [PaLI: A jointly-scaled multilingual language-image model](https://ai.googleblog.com/2022/09/pali-scaling-language-image-learning-in.html)
+
+我们观察到，scaling 可以大大改善 PaLI 模型的结果，而且比专门针对某些任务进行训练的专用大模型的结果要好，这些模型通常是通过（往往更大的）仅文本 LLM 的帮助来解决问题的。也就是说多模训练更好，而且模型越大效益越大。也有类似的涌现效果。
+
+总的贡献如下：
+
+1. 我们扩展了一个视觉-语言模型，以在各种基准测试中实现出色的性能。我们观察到，扩展视觉和语言组件都是有利的，并且报告称，在这个规模下性能仍未饱和。
+2. 我们展示了用一种混合目标的训练方法来训练这样的模型，该方法结合了 prefix-completion and masked-token completion，可以在这个规模下提高微调和少样本性能的 Pareto 前沿。
+3. 我们还展示了高容量视觉编码器（ViT-22B）可以有效地进行共同训练，用于图像分类和OCR标签分类，以在需要理解图像文本的视觉-语言任务上实现显着的改进。
+4. 总的来说，PaLI-X 通过对15个以上基准测试进行微调来改进SoTA结果，并且我们展示了它是第一个能够同时适应多个基准测试的模型，而且没有明显的性能下降。
+
+采用了非常大的 ViT-22B 作为视觉编码器，以及 UL2 作为语言编码器，输出也是文本。目标检测建模为 pix2seq 任务，使用 图片的 OCR 文字作为预训练数据集，然后在各个下游任务上微调，同时也支持 few-shot 推理。
+
+
