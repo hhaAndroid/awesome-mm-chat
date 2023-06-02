@@ -583,4 +583,44 @@ starting point), further trained at-scale on a vision-and-language data mixture 
 
 采用了非常大的 ViT-22B 作为视觉编码器，以及 UL2 作为语言编码器，输出也是文本。目标检测建模为 pix2seq 任务，使用 图片的 OCR 文字作为预训练数据集，然后在各个下游任务上微调，同时也支持 few-shot 推理。
 
+## Open-World Entity Segmentation
+
+https://github.com/dvlab-research/Entity/blob/main/README.md
+
+Entity Segmentation 新任务：开放集的无需预测类别的全景分割算法。
+
+We introduce a new image segmentation task, called Entity Segmentation (ES), which aims to segment all visual entities (objects and stuffs) in an image without predicting their semantic labels. By removing the need of class label prediction, the models trained for such task can focus more on improving segmentation quality. It has many practical applications such as image manipulation and editing where the quality of segmentation masks is crucial but class labels are less important.
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/cee48864-a274-4262-9cdb-7dd5621757b6"/>
+</div>
+
+作者认为在图像编辑领域，分割质量比类别预测更重要，因此如果我们可以抛弃类别，那么模型也更容易学。
+
+标注数据其实就是全景分割数据转化而来。
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/599ead3f-617c-41de-8f5f-ae145210a907"/>
+</div>
+
+因为要做开发集，因此输出就不能固定通道数，作者采用的是 condinst 改造版本，采用动态 head 输出不定数据的不重叠的二值 mask。
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/fe347c18-d773-412e-a5ed-ef6af7264a69"/>
+</div>
+
+## AIMS: All-Inclusive Multi-Level Segmentation
+
+https://arxiv.org/pdf/2305.17768.pdf
+
+进一步提高了 Open-World Entity Segmentation 在图片编辑领域的可用性。
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/c316342f-b972-40ad-ac3c-f09c22467756"/>
+</div>
+
+训练时候会直接输出3层粒度层级的实例分割图，一个是部件，一个是实体，一个是 relation levels 和两个关系图即为(relation and entity levels) 和 (entity and part levels) 。 训练完成后，不仅可以进行 One-step Inference 还可以进行 Prompt Inference。
+用户提供相应的 mask prompt，结合三个不同层级输出图，可以实现比较好的图像编辑功能。
+
+Relation-Level 不知道是啥样子的？
 
