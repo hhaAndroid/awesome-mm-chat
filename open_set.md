@@ -624,3 +624,49 @@ https://arxiv.org/pdf/2305.17768.pdf
 
 Relation-Level 不知道是啥样子的？
 
+## DaTaSeg
+
+DaTaSeg: Taming a Universal Multi-Dataset Multi-Task Segmentation Model
+
+google 作品，算是 mask2former 的改进，从标题可以看出来是利用多个数据集和通用分割多任务联合训练来提升各个任务性能。暂时没有开源。
+
+多数据集多任务联合训练其实是一个比较难的事情，虽然论文没有开源，但是训练思路还是值得学习下。从本文来看最大贡献不是网络改进，而是提出了一个非常简单有效方便扩展的多数据集多任务训练方法，这也是本文作者一直强调的。
+
+大多数工作都使用统一的词汇表在单个任务上合并数据集，而本文工作侧重于更具挑战性的问题：将具有不同词汇表和不同任务的数据集合并，方便后续用户扩展。
+
+和 x-decoder 做法也非常类似，不同在于类别标签的处理方面。
+
+训练数据组成：
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmyolo/assets/17425982/80011c7a-22cc-44d5-ba00-39641549d298"/>
+</div>
+
+包括 ADE20k semantic、COCO panoptic 和 Objects365 detection，可以发现 Objects365 detection 数据实际上只有 box，因此训练中包括部分弱监督，其实就是 boxinst 的做法。
+
+本文的作者包括 Simple multi-dataset detection 论文 和 https://github.com/facebookresearch/Detic 作者，联合训练。
+
+算法方面的核心做法如下：
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmsegmentation/assets/17425982/f8cbef73-8f06-4ece-a32c-673b8bee7910"/>
+</div>
+
+网络输入是单张图片，输出是 n 个 mask proposal 和对应的类别嵌入，对于不同的数据集和任务采用不同的 merge 方式得到语义分割，全景分割和实例分割输出，然后进行正常的分割训练即可。
+
+多数据集联合训练架构：
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmsegmentation/assets/17425982/9cb6562a-c501-4b3d-a1f9-5668d1347c98"/>
+</div>
+
+不同的数据集有不同的类名，当然可能存在类名相同，或者类含义一样但是表示不同的情况，因此作者用了一个固定的 Clip 模型对不同数据集的类别名进行嵌入。
+
+同时增加了一个全局共享的可学习的背景嵌入。
+
+作者发现这个架构就挺好，如果你专门针对不同的数据集引入一些特别的设计，效果还会变差。
+
+采用一个简单的协同训练策略：在每次迭代中，我们随机抽取一个数据集，然后从所选数据集中对该迭代进行采样。这可以与每次迭代中来自多个数据集的采样形成对比。我们策略的主要优点是实现起来很简单，并允许更自由地为不同的数据集使用不同的设置，并将不同的损失应用于各种任务。为了考虑不同的数据集大小，我们控制每个数据集采样率
+
+是一个不错的工作，期待后面会开源。
+
