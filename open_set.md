@@ -404,6 +404,50 @@ X-Decoder 在诸多数据集上联合预训练，使其具备了各个任务的 
 链接：https://arxiv.org/pdf/2303.08131.pdf
 github: https://github.com/IDEA-Research/OpenSeeD
 
+只开源了推理代码。基于 xdecoder 思想，提出了改进版本，支持目标检测，实例分割，全景分割和语义分割。
+
+Our OpenSeeD is the first open-vocabulary model that jointly learn on segmentation and detection.
+
+这里的分割是指的通用分割。
+
+1. 我们首先利用单个文本编码器对数据中出现的所有概念进行编码，并训练我们的模型将视觉标记与公共空间中的语义对齐。
+2. 我们将解码器中的 object queries 显式划分为两个子类型：前景和背景查询，其中第一组负责分割和检测中的前景对象，而第二组仅用于分割中的背景内容
+3. 我们引入了条件掩码解码，它从分割数据中学习从真实框解码掩码，并生成用于检测数据的 mask 辅助数据。
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/18fb603c-4e7a-4944-8730-bdd6d2b4d1e0"/>
+</div>
+
+模型输入包括图片和文本词汇表，模型输出为预测的 mask、bbox 和类别概率。
+
+```text
+O = EncI(I), T = EncT(V)
+< Pm, Pb, Ps〉 = Dec (Q; O)
+Pc = Sim(Ps, T)
+```
+
+Q 是 object query,Ps 是 decoded semantics，Pc 是 visual-semantic matching scores。其中的 Pm 是一个统一表示，包括实例 mask 和语义 mask。
+
+考虑到不同任务要求的语义粒度不一样，例如全景分割和语义分割是需要预测背景的，而实例分割和目标检测不需要，如果用同样的 query 来预测不同的任务性能较差。因此作者将输入
+query 分成了 2 组： 前景 query 和背景 query。背景 query 用于预测 stuff mask 即为 Bridge Task Gap: Decoupled Foreground and Background Decoding 部分。
+
+但是这样会有一个新问题没有解决： 虽然我们是用了不同 query 且共享同一个 decoder， 但是训练数据有 gap，检测数据是没有 mask 的,因此联合训练时候就只能只训练检测部分，我们的最终目的是训练一个统一模型
+并且用一个统一的 loss 来联合训练。因此我们需要解决检测数据没有 mask 的问题。即为 Bridge Data Gap: Conditioned Mask Decoding 部分。实际上应该是检测数据太大了，而有mask的数据太少了，如果检测数据
+不提供 mask，那么性能会低一些。
+
+因此作者提出了 Conditioned Mask Decoding 模块，也就是说 query 实际上分成了 3个部分： 前景 query 和背景 query 和 conditioned queries。conditioned queries 的作用就是给定一个 gt bbox 和对应的类别词汇，生成对应的 mask。
+
+对于已经有 mask 标注的数据集，则可以直接进行端到端检测训练，对于没有 mask 标注的数据集则并不是直接使用预测 mask，而是将预测 mask 加入到正负样本匹配过程中，因为这个 mask 不太强，特别是早期时候。
+
+因此实际上这个模型的 loss 就是包括任意数据集的分割+bbox+cls loss。
+
+考虑到这个模型实际上是开放词汇任务，因此不能过拟合到特定类别，因此加入了 Language-guided foreground query selection 模型，实际上就是前期 query 不是随机初始化的，而是需要结合 text 和图像特征进行简单 bbox head 预测而来
+对于训练收敛也会更好更快。
+
+作者在 coco 全景分割数据集和 object365 v1 和 v2数据集上面训练。v1 训练小模型，v2训练大模型。
+
+代码是基于 mask dino 和 x-decoder 构建。
+
 ## OFA 简单阅读
 
 论文： [OFA: Unifying Architectures, Tasks, and Modalities Through a Simple Sequence-to-Sequence Learning Framework](https://arxiv.org/abs/2202.03052)
@@ -669,4 +713,18 @@ google 作品，算是 mask2former 的改进，从标题可以看出来是利用
 采用一个简单的协同训练策略：在每次迭代中，我们随机抽取一个数据集，然后从所选数据集中对该迭代进行采样。这可以与每次迭代中来自多个数据集的采样形成对比。我们策略的主要优点是实现起来很简单，并允许更自由地为不同的数据集使用不同的设置，并将不同的损失应用于各种任务。为了考虑不同的数据集大小，我们控制每个数据集采样率
 
 是一个不错的工作，期待后面会开源。
+
+## GRES
+
+GRES: Generalized Referring Expression Segmentation
+
+https://github.com/henghuiding/ReLA
+
+https://github.com/MarkMoHR/Awesome-Referring-Image-Segmentation
+
+## RAM
+
+[Recognize Anything: A Strong Image Tagging Model](https://recognize-anything.github.io/)
+
+https://github.com/xinyu1205/Recognize_Anything-Tag2Text
 
