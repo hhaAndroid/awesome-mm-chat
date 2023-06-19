@@ -448,6 +448,89 @@ query 分成了 2 组： 前景 query 和背景 query。背景 query 用于预�
 
 代码是基于 mask dino 和 x-decoder 构建。
 
+## FreeSeg
+
+CVPR 2023 
+
+[FreeSeg: Unified, Universal and Open-Vocabulary Image Segmentation](https://github.com/bytedance/FreeSeg)
+
+scope 比较大，包括架构统一、任务统一和开发词汇检测，但是做法比较朴素，是一个两阶段的算法。但是实际不同数据集还是单独训练的。
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/0fb6c65c-b4af-40e3-86a1-256b381629b4"/>
+</div>
+
+模型部分是直接用的 Mask2Former。框架整体思想为： FreeSeg 采用两阶段框架，第一阶段提取通用的掩码，第二阶段利用 CLIP 对第一阶段生成的掩码执行零样本分类，但是看起来训练是一起的，不需要分成两次训练
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/ba24bb68-3e71-4e0d-9a4f-c5be7810aba7"/>
+</div>
+
+
+输入包括：图片、seen category set、任务类型名、多任务的标签。多任务标签是指的每张图片的3种类型标签：语义分割、实例分割和全景分割，
+
+考虑到多任务训练的冲突，作者是随机选择一个 task 和对应的 GT 进行类别无关训练。mask loss 为 focal loss + dice loss。
+
+为了便于FreeSeg处理任务和类别特征，我们设计了一种新的自适应提示学习，将任务和类别概念显式嵌入到联合文本嵌入中。
+
+
+
+##  MP-Former
+
+MP-Former: Mask-Piloted Transformer for Image Segmentation
+PDF: https://arxiv.org/pdf/2303.07336v2.pdf
+https://zhuanlan.zhihu.com/p/619043140
+
+提出了一种基于掩码驱动（mask-piloted）的 Transformer 模型 MP-Former 用于图像分割任务，训练速度和性能都优于 mask2former，不过不是开放检测。
+
+## OneFormer
+
+CVPR 2023 
+
+https://github.com/SHI-Labs/OneFormer
+
+OneFormer: One Transformer to Rule Universal Image Segmentation
+
+主打的是多数据集联合训练，而不是类似 Mask2Former 每个任务单独训练，成本较高。通过 task token 来区分不同任务实现联合训练，推理时候也需要先指定 task。
+
+
+为何目前没有类似算法？ 我们假设是由于架构中没有任务指导，现有方法需要在每个分割任务上单独训练，这使得在联合训练或单个模型时学习任务间域差异具有挑战性。为了应对这一挑战，我们以文本的形式引入了一个任务输入标记：“the task is {task}”，以专注于任务调整模型，使我们的架构任务引导用于训练，任务动态进行推理，所有这些都使用单一模型。我们在联合训练过程中从 {panoptic, instance, Semantic} 和相应的基本GT中统一采样 {task}，以确保我们的模型在任务方面是无偏的。
+
+我们在训练过程中从相应的全景注释中推导出语义和实例标签。
+
+第二个问题：多任务模型如何在联合训练过程中更好地学习任务间和类间差异？ 为了将特定于任务的上下文添加到我们的模型中，我们将查询初始化为重复的任务标记（从任务输入中获得），并使用从采样任务的相应真实标签派生的文本计算查询-文本对比损失。我们假设查询上的对比损失有助于引导模型更加任务敏感。此外，它还在一定程度上有助于减少类别错误预测。
+
+
+### 模型架构
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/5ab7aa80-5a70-465e-861f-40bdb0c5e3bd"/>
+</div>
+
+模型有两个输入：图片和 task 文本，固定为 the task is {task}。根据文本描述输出不同的任务预测值。
+
+在训练过程中为了计算 query-text loss，需要对每张图片的每个 task 生成对应的独特文本描述，这个文本描述是从对应的 GT 中生成的。如下所示：
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/bc34e773-abdc-4e6f-8b6e-e2c764a02e6f"/>
+</div>
+
+假设 query 一共是 500，那么根据不同的任务和图片中的 GT 数，可以生成 n 个文本描述，如果不够 500，则采用固定的文本填充，最终构成 text list。对于每张图片，在训练时候会随机采样任务，确保训练均衡。
+
+问题: 按照图片中的文本排列方式，这是强制了每个 query 的预测类别？ 并不是动态匹配？
+
+对应的，所有 query 分成了两种类型，一个是 text query，一个是 object query， text query 的获取是通过 text mapper 模块实现的，仅仅用于训练阶段。
+
+为了获得 object query ，我们首先将对象查询初始化为任务令牌 (Qtask) 的 N - 1 次重复。然后，我们从 2 层转换器内的扁平 1/4 尺度特征的指导下更新 Q'。来自转换器的更新 Q'（用图像上下文信息丰富）与 Qtask 连接，以获得 N 个查询 Q 的任务条件表示。与 vanilla all-zeros 或随机初始化不同，查询和与 Q_task 的连接的任务引导初始化对于模型学习多个分割任务至关重要
+
+### 模型训练
+
+训练数据为 Cityscapes、ADE20K 和 COCO2017。
+
+OneFormer 架构类似 one backbone + N Head 模式，在测试时候不仅要指定 task，还需要指定用哪个 head，这应该和实际用户需求不符合。用户实际上需要的应该是类别并集，这样相当于有增量功能。
+
+DaTaSeg 算法其实也没有解决这个问题，但是由于他的类别 token 计算仅仅是最后的点乘，所以实际上要做多数据集类别合并其实比较容易。
+
 ## OFA 简单阅读
 
 论文： [OFA: Unifying Architectures, Tasks, and Modalities Through a Simple Sequence-to-Sequence Learning Framework](https://arxiv.org/abs/2202.03052)
@@ -728,3 +811,8 @@ https://github.com/MarkMoHR/Awesome-Referring-Image-Segmentation
 
 https://github.com/xinyu1205/Recognize_Anything-Tag2Text
 
+## Side Adapter Network 
+
+CVPR 2023 Highlight
+
+开放词汇语义分割算法。
