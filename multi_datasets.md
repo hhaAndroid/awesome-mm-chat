@@ -80,12 +80,96 @@ ECCV2022
 
 Detecting Twenty-thousand Classes using Image-level Supervision
 
+代码开源非常全面且规范，非常良心，后续 follow 的人也多。
+
+我们提出了 Detic，它简单地在图像分类任务上训练检测器的分类器(这通常是需要设定任意物体都能够被检测出来，然后才能分类)，从而将检测器的词汇量扩展到数万个概念。与之前的工作不同，Detic 不需要复杂的分配方案，根据模型预测将图像标签分配给框，从而更容易实现和兼容一系列检测架构和主干。
+
+带标注的目标检测数据集太少，分类的话有 imagenet-21k has 21K classes and 14M images 1千 400 万张图片，因此如果弱监督可行，那是一个不错的探索。
+
+出发点： We observe that the localization and classification sub-problems can be decoupled. 并且基于监督学习的检测器是能够很好的检测出新物体的，最大问题是不知道类别。因此 we focus on the classification sub-problem and use image-level labels to train the classifier and broaden the vocabulary of the detector.
+做法也非常简单：We propose a simple classification loss that applies the image-level supervision to the proposal with the largest size, and do not supervise other outputs for image labeled data. This is easy to implement and massively expands the vocabulary.
+
+和常规的弱监督不一样的是，本文做法仅仅关注分类分支，因此弱监督也只是作用于分类分支，回归分支不专门优化，只是和检测数据联合训练就行。
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/0db24184-c30c-4778-81c5-873715dfd913"/>
+</div>
+
+流程非常简单，对于检测器就是正常训练，但是对于没有bbox标签的数据，则直接用 rpn 提取的最大 roi 作为该图像的 proposal ，然后仅仅训练分类分支。开发词汇的话，w 要变成 embeding，否则无法进行新类检测。
+
+实验主要是在 LVIS-base、 ImageNet21k 和 Conceptual Captions 上面进行，
+
+数据定义：
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/5ffa581f-d132-4fcc-b00e-2cfce55bbaf9"/>
+</div>
+
+1. LVIS: 我们将此仅具有频繁类和常见类的部分训练集称为 LVIS-base, 罕见类作为新类进行评估。我们报告了掩码 mAP，它是 LVIS 的官方指标。虽然我们的模型是为框检测而开发的，但我们使用标准的类不可知掩码头来为框生成分割掩码。我们只在检测数据上训练掩码头
+2. Image-supervised data：我们使用精确的文本匹配从 Conceptual Captions 中提取图像标签，并保留图像标签中至少包括了一个 LVIS 类的图像。生成的数据集包含 1.5M 图像，包含 992 个LVIS类。
+
+## 实验细节
+
+**(1) Box-Supervised: a strong LVIS baseline**
+
+LVIS 类别很多，训练有一定技巧，作者首先基于 bbox 监督构建了一个强的 baseline，然后基于这个 baseline 再进行后续实验。
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/a88d6c0d-cc56-4d2d-bd16-e54463caa624"/>
+</div>
+
+在 LVIS 上训练实例分割任务，注意这个应该是全部训练集 full LVIS。最后一行是在 +IN_21K 后面继续实验，把 LVIS 中罕见类去掉训练的结果(也就是这里变成了开放词汇检测)，由于去掉了部分标注，因此测试性能会低一些，但是因为用了 CLIP classifier，所以依然可以检测出。 
+最后一行的移除罕见类就是本文的 LVIS baseline。
+
+**(2) Multi-dataset training**
+
+我们以 1: 1 的比例对检测和分类小批量进行采样，而不管原始数据集的大小如何。我们将来自同一数据集的图像分组到同一个GPU上，以提高训练效率
+
+我们总是首先训练一个收敛的 baseline 基类模型（4× schedule），并使用额外的图像标记数据对其进行微调，以进行另外 4 倍调度。我们确信仅使用框监督确认微调模型并不能提高性能。COCO 也是一样训练。
+
+作者发现图片标签输入情况下图片输入分辨率对性能也有不少影响。Using smaller resolution in addition allows us to increase the batch-size with the same computation. In our implementation, we use 320×320 for ImageNet and CC。
+
 # UniDetector
 
 CVPR2023
 
 Detecting Everything in the Open World: Towards Universal Object Detection
 
+1）它利用多个源和异构标签空间的图像通过图像和文本空间的对齐进行训练，这保证了通用表示有足够的信息
+2）由于视觉和语言模式的丰富信息，它很容易推广到开放世界，同时保持可见和不可见类之间的平衡
+3）通过我们提出的解耦训练方式和概率校准，进一步促进了新类别的泛化能力
+
+这些贡献允许 UniDetector 检测超过 7k 个类别，这是迄今为止最大的可测量类别大小，只有大约 500 个类参与训练。
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/d3b13027-a3e2-41fe-be1e-b2bc67f924f7"/>
+</div>
+
+## 架构
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/227e8ad5-0619-4dbb-adce-b182a440951b"/>
+</div>
+
+训练过程分成三步：
+
+**Step1:大规模图像-文本对齐预训练**
+
+传统的只有视觉信息的全监督学习依赖于人工注释，这限制了通用性。考虑到语言特征的泛化能力，我们引入了语言嵌入来辅助检测。受语言图像预训练最近成功的启发，我们涉及来自预训练图像-文本模型的嵌入。我们采用 RegionCLIP 预训练参数进行实验
+
+**Step2:异构标签空间训练**
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/477ec48b-7f33-45ff-9fc6-90521da7ac71"/>
+</div>
+
+实际上有三种做法，如上所示。采样策略一般也有多种用于对付长尾问题，但是我们是要做开放集，因此长尾问题应该可以忽略，因此采用最简单的随机采样就行。
+
+**Step3：开放世界推理**
+
+使用经过训练的对象检测器和来自测试词汇表的语言嵌入，我们可以直接在开放世界中执行检测进行推理，而无需任何微调。然而，由于在训练期间没有出现新类别，检测器很容易生成过度自信的预测。在这一步中，我们提出了概率校准来保持基类和新类别之间的推理平衡。
+
+训练数据集包括：COCO, Objects365, and OpenImages，并且在 LVIS, ImageNetBoxes, and VisualGenome 上进行评估。
 
 
 # DaTaSeg
