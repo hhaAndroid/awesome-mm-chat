@@ -8,3 +8,10 @@ https://github.com/caoyunkang/Segment-Any-Anomaly
 
 # 网站
 https://arxiv.org/list/cs.CV/recent
+
+LLM 总结，论文名：A Survey on Multimodal Large Language Models
+https://github.com/BradyFU/Awesome-Multimodal-Large-Language-Models
+
+加速数据瓶颈
+https://github.com/libffcv/ffcv
+
