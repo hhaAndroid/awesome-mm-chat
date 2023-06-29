@@ -129,6 +129,13 @@ LVIS 类别很多，训练有一定技巧，作者首先基于 bbox 监督构建
 
 作者发现图片标签输入情况下图片输入分辨率对性能也有不少影响。Using smaller resolution in addition allows us to increase the batch-size with the same computation. In our implementation, we use 320×320 for ImageNet and CC。
 
+## 改进论文 mm-ovod
+
+https://github.com/prannaykaul/mm-ovod
+
+已开源
+
+
 # UniDetector
 
 CVPR2023
