@@ -1,4 +1,4 @@
-# OpenSet
+# Visual Segmentation
 
 X-Decoder 基于 Mask2Former，因此必须要理解 MaskFormer 和 Mask2Former。
 

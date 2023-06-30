@@ -25,5 +25,8 @@ https://github.com/libffcv/ffcv
 
 https://arxiv.org/pdf/2306.14895.pdf
 
+## Transformer-Based Visual Segmentation: A Survey
 
+https://arxiv.org/abs/2304.09854v2 第二版有更新
+https://github.com/lxtGH/Awesome-Segmentation-With-Transformer
 

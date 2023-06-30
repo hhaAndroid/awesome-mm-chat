@@ -1,52 +1,59 @@
 # awesome-mm-chat
 多模态 MM +Chat 合集
 
-## LLaMA 解读
+## BERT 解读
+具体见 [BERT](BERT.md)
 
-具体见 [llama](LLaMA.md)
+## GPT 解读
+具体见 [GPT](GPT.md)
 
-## stanford_alpaca
-
-具体见 [stanford_alpaca](stanford_alpaca.md)
-
-## Vicuna 小羊驼
-Vicuna 是 一个开源聊天机器人，号称达到了 ChatGPT 的 90%，也是基于 LLaMA 通过指令微调而来。
-
-Vicuna 开源代码地址：https://github.com/lm-sys/FastChat    
-Fork 并注释版本： https://github.com/hhaAndroid/FastChat/tree/hha    
-
-具体见 [Vicuna 小羊驼](vicuna.md)
-
-## mmpretrain 多模态部分
-
-具体见 [mmpretrain](mmpretrain.md)
-
-## OpenSet 开放集统一架构
-
-具体见 [OpenSet](open_set.md)
+## CLIP 解读
+具体见 [CLIP](CLIP.md)
 
 ## BLIP 解读
 
 具体见 [BLIP 和 BLIP2 解读](BLIP.md)
 
+## LLaMA 解读
 
-## MiniGPT4 解读
-
-具体见 [minigpt4](minigpt4.md)
+具体见 [llama](LLaMA.md)
 
 ## DetGPT 解读
 
-具体见 [detgpt](detgpt.md)  
+具体见 [DetGPT](detgpt.md)  
 
-## Transformer Agent
+## Visual Segmentation 解读
+Visual Segmentation 指的是通用图像分割，包括开放集。
 
-具体见 [agent](transformer_agent.md)
+具体见 [Visual Segmentation](visual_segmentation.md)
 
-## 模型部分
+## Multi Dataset 解读
 
-BERT 和 GPT 系列是 NLP 领域的两大基石，因此对这两个模型的结构进行详细分析是非常有必要。
+指的是在 CV 任务中特别是检测任务中常用的多数据集联合训练论文
 
-具体见 [BERT](BERT.md) 和 [GPT](GPT.md)
+具体见 [Multi Dataset](multi_datasets.md)
+
+## LLM 解读
+
+大语言模型相关论文
+
+具体见 [LLM](llm.md)
+
+## MLLM 解读
+
+视觉多模态大语言模型相关论文
+
+具体见 [MLLM](mllm.md)
+
+## mmpretrain 多模态部分
+
+具体见 [mmpretrain](mmpretrain.md)
+
+## Tools 解读
+
+存放和 LLM tool 相关的内容，例如 visual chatgpt 等
+
+具体见 [Tools](tools.md)
 
 ## HuggingFace Transformers 基础教程
 本部分用于 CVer 们快速上手 HuggingFace Transformers
@@ -72,34 +79,6 @@ Parameter-Efficient Fine-Tuning
 
 具体见 [Diffusers](diffusers.md)
 
-## MMGPT
+## CVPR2023 检测方向分析
 
-知乎地址：https://zhuanlan.zhihu.com/p/625456570  
-开源地址：https://github.com/open-mmlab/Multimodal-GPT  
-
-具体见 [mmgpt](mmgpt.md)
-
-## CLIP 解读
-
-论文题目： Learning Transferable Visual Models From Natural Language Supervision  
-论文地址： https://arxiv.org/abs/2103.00020    
-官方地址： https://github.com/openai/CLIP (没有训练代码)     
-Fork 并注释版本： https://github.com/hhaAndroid/CLIP/tree/hha   
-
-具体见 [CLIP 解读](CLIP.md)
-
-## GLIP 解读
-
-论文题目： GLIP: Grounded Language-Image Pre-training  
-论文地址： https://arxiv.org/abs/2112.03857  
-官方地址：https://github.com/microsoft/GLIP   
-Fork 并注释版本： https://github.com/hhaAndroid/GLIP/tree/hha   
-
-具体见 [GLIP 解读](GLIP.md)
-
-## InternGPT 
-
-具体见 [InternGPT](InternGPT.md)
-
-
-## DINOv2 解读
+内容已经发布到知乎，具体见： https://zhuanlan.zhihu.com/p/632210111

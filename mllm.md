@@ -44,6 +44,199 @@ bbox 模态表示就比较容易了，表示为一连串的离散标注，每个
 <img src="https://github.com/open-mmlab/mmpretrain/assets/17425982/be6c2a55-462e-4eca-b337-b8cef5a8dae7"/>
 </div>
 
+# MMGPT
+
+Train a multi-modal chatbot with visual and language instructions!
+
+开源地址：https://github.com/open-mmlab/Multimodal-GPT
+
+基于开源的多模态模型 OpenFlamingo，使用开放数据集创建了各种视觉指导数据，包括 VQA、图像字幕、视觉推理、文本 OCR 和视觉对话。此外还使用仅语言指导数据训练了 OpenFlamingo 的语言模型组件。 视觉和语言指导的联合训练有效提高了模型的性能！
+
+## 环境安装
+
+```shell
+git clone https://github.com/open-mmlab/Multimodal-GPT.git
+cd Multimodal-GPT
+conda create -n mmgpt python=3.8 -y
+conda activate mmgpt
+pip install -r requirements.txt
+pip install -e . -v
+```
+环境安装可能需要一定时间，因为库比较多。 下面以 Linux 为例
+
+## 权重准备
+
+最终结构应该是：
+
+```text
+Multimodal-GPT/checkpoints
+├── llama-7b_hf
+│   ├── config.json
+│   ├── pytorch_model-00001-of-00002.bin
+│   ├── ......
+│   └── tokenizer.model
+├── OpenFlamingo-9B
+│   └──checkpoint.pt
+├──mmgpt-lora-v0-release.pt
+```
+
+**(1) llama-7b_hf 下载**
+
+需要先安装 git-lfs, 你可以去 https://github.com/git-lfs/git-lfs/releases 下载安装包
+
+```shell
+wget https://github.com/git-lfs/git-lfs/releases/download/v2.13.1/git-lfs-linux-amd64-v2.13.1.tar.gz
+tar -xzvf git-lfs-linux-amd64-v2.13.1.tar.gz
+cd git-lfs-2.13.1
+sudo ./install.sh
+```
+
+安装好后，可以直接下载权重
+
+```shell
+git clone https://huggingface.co/decapoda-research/llama-7b-hf
+```
+上述权重大概 26G(7B fp32 模型参数量的存储空间为 4B* 70 亿 = 28 GB 实际下载大概 26 G)
+
+下载后需要修改类名，否则后续会报错：
+
+```shell
+cd llama-7b-hf
+vim tokenizer_config.json # 将 LLaMATokenizer 修改为 LlamaTokenizer
+```
+
+上述只是一个典型的别人弄好的 HF FP32 权重，实际上网上还是很多版本的，大家都可以尝试一下。
+
+**(2) OpenFlamingo-9B 下载**
+
+```shell
+git lfs install
+git clone https://huggingface.co/openflamingo/OpenFlamingo-9B
+```
+
+需要输入 huggingface 账号的用户名和密码。如果实在是下载不了，可以直接登录网页点击下载。
+
+**(3) mmgpt-lora-v0-release.pt 下载**
+
+```shell
+wget https://download.openmmlab.com/mmgpt/v0/mmgpt-lora-v0-release.pt
+```
+
+## 运行 Demo
+
+```shell
+python app.py
+```
+        
+第一次运行会自动下载 CLIP 权重，正常启动后会出现浏览器地址，也会生成一个临时的可以公开访问的地址。界面如下所示：
+
+<div align=center>
+<img src="https://user-images.githubusercontent.com/17425982/234834321-e0a958c9-7552-497b-aae4-2f664f748fb5.png"/>
+</div>
+
+这个 LLM 的一大特点是无敌自信，不管你咋说他错了，他都告诉你我没有错(其他 LLM 都是立刻道歉，并给出别的答案)。～～～
+
+# MiNiGPT-4
+
+## 环境安装
+基础环境： CentOS 7 + 32G V100 
+
+**(1) 安装基础环境**
+
+```shell
+git clone https://github.com/Vision-CAIR/MiniGPT-4.git
+cd MiniGPT-4
+conda env create -f environment.yml
+conda activate minigpt4
+```
+
+**(2) 安装 git-lfs**
+
+如果你已经安装好了，可以跳过这一步，如果你是其他系统，则应该选择其他安装命令，以下为 centos 7 安装命令：
+
+```shell
+wget https://packagecloud.io/github/git-lfs/packages/el/7/git-lfs-2.13.2-1.el7.x86_64.rpm/download # 或者直接下载
+sudo rpm -ivh git-lfs-2.13.2-1.el7.x86_64.rpm
+```
+
+**(3) 准备 vicuna-13b 权重**
+
+你需要下载 vicuna-13b-delta-v0 和 llama-13b-hf 两个权重，然后合并。
+
+注意： 虽然 vicuna 模型是基于 llama 的全量微调，但是由于 llama 协议限制，作者无法直接发布 vicuna 全量模型，因此作者先手动减掉了 llama 权重，然后发布了 vicuna-13b-delta-v0 权重，因此你需要先下载这个权重，然后再和 llama-13b-hf 权重合并。
+
+```shell
+git clone https://huggingface.co/lmsys/vicuna-13b-delta-v0 # 大概 49G
+git clone https://huggingface.co/decapoda-research/llama-13b-hf  # 大概 75G
+```
+
+下载后需要修改类名，否则后续会报错：
+
+```shell
+cd llama-13b-hf
+vim tokenizer_config.json # 将 LLaMATokenizer 修改为 LlamaTokenizer
+```
+
+**(4) 权重合并得到 vicuna-13b**
+
+首先安装 FastChat
+
+```shell
+pip install git+https://github.com/lm-sys/FastChat.git@v0.1.10
+```
+
+然后运行
+
+```shell
+python -m fastchat.model.apply_delta \
+    --base 你的路径/llama-13b-hf \
+    --target 你的路径/vicuna-13b \  # 合并后为 37G
+    --delta 你的路径/vicuna-13b-delta-v0 
+```
+
+最后修改 https://github.com/Vision-CAIR/MiniGPT-4/blob/main/minigpt4/configs/models/minigpt4.yaml#L16 为你的 vicuna-13b 路径
+
+**(5) 下载 minigpt-4 预训练的权重**
+
+去 https://drive.google.com/file/d/1a4zLvaiDBr-36pasffmgpvH5P7CKmpze/view?usp=share_link 下载 13b 的权重
+
+然后修改 https://github.com/Vision-CAIR/MiniGPT-4/blob/main/eval_configs/minigpt4_eval.yaml#L11 为你自己的路径
+
+## 环境启动
+
+```shell
+python demo.py --cfg-path eval_configs/minigpt4_eval.yaml  --gpu-id 0
+```
+
+如果出现如下错误： `NameError: name 'cuda_setup' is not defined`
+请使用如下命令修复：  `pip install bitsandbytes==0.35.0`
+
+如果出现如下错误： `ERROR: Your GPU does not support Int8 Matmul!`
+请修改 https://github.com/Vision-CAIR/MiniGPT-4/blob/main/eval_configs/minigpt4_eval.yaml#L8 将 low_resource 设置为 False
+
+## 效果展示
+
+<div align=center>
+<img src="https://github.com/Vision-CAIR/MiniGPT-4/assets/17425982/4408fe44-4293-497e-a30e-96e4b45b337f"/>
+</div>
+
+英文效果不错，直接就知道是来自哪一部漫画。
+
+<div align=center>
+<img src="https://github.com/Vision-CAIR/MiniGPT-4/assets/17425982/b00cf85d-e327-45f8-a80d-30b71de7f564"/>
+</div>
+
+中文效果差点，在经过提示了可以回答出来。
+
+OCR 任务也还行
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/c5c01053-f408-4df3-bd2e-eb1283c1363b"/>
+</div>
+
+整体来说 minigpt-4 13b 模型效果还是非常 ok 的。
+
+
 # VisionLLM
 
 论文： [VisionLLM: Large Language Model is also an Open-Ended Decoder for Vision-Centric Tasks](https://arxiv.org/abs/2305.11175)
@@ -305,4 +498,7 @@ referring expression generation 用于给定图片和区域，对该区域进行
 <s><image> Image Embedding </image><grounding><p>A man in a blue hard hat and orange safety vest</p>
 
 模型应该应该是直接输出 bbox 坐标 <box> <loc68> <loc425> </box>。
+
+
+## LaVIN
 
