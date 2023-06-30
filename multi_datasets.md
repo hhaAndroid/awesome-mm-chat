@@ -74,7 +74,7 @@ https://arxiv.org/abs/2102.13086v2
 
 https://zhuanlan.zhihu.com/p/73162940
 
-# Detic
+# *Detic*
 
 ECCV2022
 
@@ -136,7 +136,7 @@ https://github.com/prannaykaul/mm-ovod
 已开源
 
 
-# UniDetector
+# *UniDetector*
 
 CVPR2023
 
@@ -172,14 +172,24 @@ Detecting Everything in the Open World: Towards Universal Object Detection
 
 实际上有三种做法，如上所示。采样策略一般也有多种用于对付长尾问题，但是我们是要做开放集，因此长尾问题应该可以忽略，因此采用最简单的随机采样就行。
 
+也就是训练时候虽然是 3 个数据集联合训练，但是对于每个样本都会标记其属于哪个数据集，roi 特征的视觉特征会和三个数据集的 CLIP 类别语言特征计算相似度(实际上应该是属于哪个数据集就算哪一个就行)，然后如果该数据集属于1，那么就只计算 1 数据集的 cls embeding loss。
+
 **Step3：开放世界推理**
 
 使用经过训练的对象检测器和来自测试词汇表的语言嵌入，我们可以直接在开放世界中执行检测进行推理，而无需任何微调。然而，由于在训练期间没有出现新类别，检测器很容易生成过度自信的预测。在这一步中，我们提出了概率校准来保持基类和新类别之间的推理平衡。
 
-训练数据集包括：COCO, Objects365, and OpenImages，并且在 LVIS, ImageNetBoxes, and VisualGenome 上进行评估。
+推理时候可以先提供类别信息即可。
+
+训练数据集包括：COCO, Objects365, and OpenImages，并且在 LVIS, ImageNetBoxes, and VisualGenome 上进行评估。作者并没有用全量数据集，而是分别从 3 个数据集里面都随机抽一些出来，估计是不是因为样本量差距太大了。
+不抽取估计会有偏？
+
+作者这种训练方式应该很容易扩展，就是不知道如果用全量会不会出现问题。
+
+## 推理时候概率校准
 
 
-# DaTaSeg
+
+# *DaTaSeg*
 
 UniDet 和 Detic 的作者，算是改进版，没开源。
 
@@ -246,7 +256,7 @@ google 作品，算是 mask2former 的改进，从标题可以看出来是利用
 
 这个模型没有实现全量数据集的模型空间，因此也不需要解决标签冲突的问题，每次推理时候应该都要选择数据集和任务。
 
-# ScaleDet
+# *ScaleDet*
 
 CVPR2023 
 
