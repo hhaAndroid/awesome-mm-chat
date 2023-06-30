@@ -74,7 +74,7 @@ https://arxiv.org/abs/2102.13086v2
 
 https://zhuanlan.zhihu.com/p/73162940
 
-# *Detic*
+# Detic-重点
 
 ECCV2022
 
@@ -136,7 +136,7 @@ https://github.com/prannaykaul/mm-ovod
 已开源
 
 
-# *UniDetector*
+# UniDetector-重点
 
 CVPR2023
 
@@ -189,7 +189,7 @@ Detecting Everything in the Open World: Towards Universal Object Detection
 
 
 
-# *DaTaSeg*
+# DaTaSeg-重点
 
 UniDet 和 Detic 的作者，算是改进版，没开源。
 
@@ -256,7 +256,7 @@ google 作品，算是 mask2former 的改进，从标题可以看出来是利用
 
 这个模型没有实现全量数据集的模型空间，因此也不需要解决标签冲突的问题，每次推理时候应该都要选择数据集和任务。
 
-# *ScaleDet*
+# ScaleDet-重点
 
 CVPR2023 
 
