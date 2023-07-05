@@ -339,3 +339,18 @@ https://arxiv.org/pdf/2001.04621.pdf
 
 https://arxiv.org/pdf/2304.03580.pdf
 
+# Multi-Task Heterogeneous Training
+
+https://arxiv.org/pdf/2306.17165.pdf
+An Efficient General-Purpose Modular Vision Model via Multi-Task Heterogeneous Training
+
+MOE 系统。
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/3071aaa4-3635-48d2-b51a-f104362dbf4f"/>
+</div>
+
+如何进行异构空间多任务多模型训练？ 难点在于 data distribution, architectures, task-specific modules, dataset scales, and sampling strategies 的设计上。
+
+
+

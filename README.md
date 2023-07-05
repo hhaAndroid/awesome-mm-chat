@@ -82,3 +82,11 @@ Parameter-Efficient Fine-Tuning
 ## CVPR2023 检测方向分析
 
 内容已经发布到知乎，具体见： https://zhuanlan.zhihu.com/p/632210111
+
+## SAM 及其后续工作
+
+具体见 [SAM](sam.md)
+
+## DETR 系列代码理解
+
+具体见 [DETR](detr.md)

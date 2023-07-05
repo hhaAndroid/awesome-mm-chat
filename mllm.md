@@ -499,6 +499,77 @@ referring expression generation 用于给定图片和区域，对该区域进行
 
 模型应该应该是直接输出 bbox 坐标 <box> <loc68> <loc425> </box>。
 
+# Shikra
 
-## LaVIN
+Shikra: Unleashing Multimodal LLM's Referential Dialogue Magic 解锁多模态语言模型参考对话的魔法  
+
+https://arxiv.org/pdf/2306.15195.pdf
+https://zhuanlan.zhihu.com/p/640891652
+
+在人类的日常交流中，经常会关注场景中的不同区域或物体，双方都可以通过说话并指向这些区域来进行高效的信息交换。我们将这种对话模式称为参考对话（Referential Dialogue）。本工作提出了 Shikra 模型，赋予了MLLM这样的参考对话的魔法，既可以理解位置输入，也可以产生位置输出。
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/44df5fbf-1ce1-40ce-82ea-cf26903ac8cb"/>
+</div>
+
+1. Shikra 能够理解用户输入的 Point/Box，并支持 Point/Box 的输出，可以和人类无缝地进行参考对话；
+2. Shikra 设计简单统一，采用非拼接式设计，直接使用数字表示坐标，不需要额外的位置编码器、前/后目标检测器或外部插件模块，甚至不需要额外的词汇表。
+
+## 原理
+
+模型架构采用CLIP ViT-L/14 作为视觉主干，Vicuna-7/13B 作为语言基模型，使用一层线性映射连接CLIP和Vicuna的特征空间
+
+Shikra 直接使用自然语言中的数字来表示物体位置，使用[xmin, ymin, xmax, ymax] 表示边界框，使用[xcenter, ycenter]表示中心点，xy 坐标根据图像大小进行归一化，每个数字默认保留 3 位小数，这些坐标可以出现在模型的输入和输出序列中的任何位置，记录坐标的方括号也自然地出现在句子中。在论文中，本工作也尝试使用其他方式进行数值表示，并做了定量的对比实验
+
+思想链（CoT），旨在通过在最终答案前添加推理过程以帮助LLM回答复杂的QA问题。这一技术已被广泛应用到自然语言处理的各种任务中。目前的MLLM还存在严重的幻视问题，CoT也经常会产生幻觉，影响最终答案的正确性。通过在合成数据集CLEVR上的实验，本工作发现，使用带有位置信息的CoT时，可以提升模型回答的准确率。
+
+在CoT中包含坐标信息，性能得到了提升，我们将这种新的 CoT 方式称为 Grounding-CoT（GCoT）。
+
+Shikra is trained in two stages. In the first stage, we train it on the reorganized VL dataset (Section 5.3.1) for 100,000 steps (around 1.5 epoch); 
+In the  second stage, we raise the sampling ratio to 50% on LLaVA-Instruct-150K (Liu et al., 2023a) and our generated RD data (Section 5.3.2). 
+In both stages, we freeze the visual encoder and tune all parameters in LLM. All training runs on 8 NVIDIA A100 GPUs. It takes around 100h for stage one training and 20h for stage two.
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/7c3490a8-4d5d-4a9d-8f2a-c61d442f0036"/>
+</div>
+
+不同任务联合训练的输入模板
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/2ee3f034-8644-445f-9cfc-616a60d8127b"/>
+</div>
+
+# LaVIN
+
+# LENS
+
+https://github.com/ContextualAI/lens
+
+Towards Language Models That Can See: Computer Vision Through the LENS of Natural Language
+
+一个不用任何训练就可以赋予 LLM 模型视觉理解和 VQA 能力的方法。看起来非常酷炫，实际上做法非常简单，推理成本也是极其高，感觉也就是看看。目前来看局限性也很大，期待后面有更好的办法。
+
+其主要的点在于：目前的流行多模态模型都需要多模态预训练这个步骤，通常需要收集大量的图文数据进行训练，而本文不需要这个步骤或者说根本就不用训练。
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/eb29f030-b59b-4705-b52d-747dbbd06b39"/>
+</div>
+
+如果想不训练，那么其实也是类似于 prompt 工程
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/d073a2cc-c19a-4ad6-b26b-762ea7b45a2b"/>
+</div>
+
+视觉部分是并行加了很多 SOTA 的视觉模型，然后可以生成 tag,属性和描述等等一大堆文本信息，然后和用户输入文本一起构成最终输入进行 VQA。
+
+推理成本非常高。
+
+# mPLUG-Owl
+
+
+
+# 其他
+
+https://zhuanlan.zhihu.com/p/639822513
 

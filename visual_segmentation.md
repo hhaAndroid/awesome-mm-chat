@@ -638,3 +638,11 @@ CVPR 2023 Highlight
 
 https://arxiv.org/pdf/2306.14399.pdf
 https://github.com/WeiFeng-Github/MQN
+
+## HIPIE
+
+https://arxiv.org/pdf/2307.00764.pdf
+https://github.com/berkeley-hipie/HIPIE
+
+Hierarchical Open-vocabulary Universal Image Segmentation
+
