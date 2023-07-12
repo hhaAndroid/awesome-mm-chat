@@ -136,7 +136,7 @@ python app.py
 
 这个 LLM 的一大特点是无敌自信，不管你咋说他错了，他都告诉你我没有错(其他 LLM 都是立刻道歉，并给出别的答案)。～～～
 
-# MiNiGPT-4
+# MiniGPT-4
 
 ## 环境安装
 基础环境： CentOS 7 + 32G V100 
@@ -235,7 +235,6 @@ OCR 任务也还行
 </div>
 
 整体来说 minigpt-4 13b 模型效果还是非常 ok 的。
-
 
 # VisionLLM
 
@@ -370,6 +369,7 @@ starting point), further trained at-scale on a vision-and-language data mixture 
 采用了非常大的 ViT-22B 作为视觉编码器，以及 UL2 作为语言编码器，输出也是文本。目标检测建模为 pix2seq 任务，使用 图片的 OCR 文字作为预训练数据集，然后在各个下游任务上微调，同时也支持 few-shot 推理。
 
 # ChatSpot
+8月估计开源，论文也还没有公开
 
 # Kosmos-2
 
@@ -495,7 +495,9 @@ referring expression generation 用于给定图片和区域，对该区域进行
 
 以 Referring Expression Comprehension 为例模型的输入实际上是： 
 
+```
 <s><image> Image Embedding </image><grounding><p>A man in a blue hard hat and orange safety vest</p>
+```
 
 模型应该应该是直接输出 bbox 坐标 <box> <loc68> <loc425> </box>。
 
@@ -539,6 +541,12 @@ In both stages, we freeze the visual encoder and tune all parameters in LLM. All
 <img src="https://github.com/open-mmlab/mmdetection/assets/17425982/2ee3f034-8644-445f-9cfc-616a60d8127b"/>
 </div>
 
+# LLaVA
+
+# mPLUG-Owl
+
+# InstructBLIP
+
 # LaVIN
 
 # LENS
@@ -567,7 +575,78 @@ Towards Language Models That Can See: Computer Vision Through the LENS of Natura
 
 # mPLUG-Owl
 
+# GPT4RoI
 
+https://github.com/jshilong/GPT4RoI
+
+# EMU-不错
+
+Generative Pretraining in Multimodality
+
+https://arxiv.org/pdf/2307.05222.pdf
+https://github.com/baaivision/Emu 模型比较大
+
+生成式预训练直接解锁多模态功能。 全开源，可以直接训练第三步指令级微调。
+
+EMU 将物理世界上存在的各种模态都统一变成 embedding，然后采用 NLP 里面的预测下一个 token (token 其实就是 embedding，可以是离散的也可以是连续的)的方式进行统一建模训练，算是一个和别人不同的地方。
+这样做的好处是训练的数据源非常好处理，容易获取。
+
+与现有的LMM不同,它只在文本标记上计算预测下一个损失,在训练Emu时,所有输入元素包括离散文本标记和连续图像嵌入都被考虑在损失计算中。我们采用交叉熵分类损失计算离散文本标记,采用L2回归损失计算连续视觉嵌入。由于原始图像通常缺乏语言中的左至右因果依赖关系,Emu 并未在原始像素空间进行图像生成预训练。取而代之的是,视觉嵌入通过因果Transformer转换为一个因果潜在空间,它接受EVA-CLIP生成的图像编码作为输入,输出N个标记来捕捉给定图像的因果依赖性。
+
+我们提出了Emu,一个基于Transformer的多模态联合模型,它可以无缝地在多模态环境中生成图像和文本。这个"全才"模型可以通过 a one-model-for-all 的自回归训练流程,以区别对待的方式接收任何单模式或多模式数据输入(例如,交错的图像、文本和视频)。首先,视觉信号被编码成嵌入,与文本标记一起形成一个交错的输入序列。然后,Emu通过统一地 Objectives 方式进行端到端训练,要么预测下一个文本标记,要么回归下一个视觉嵌入在多模态序列中。这种多样化的多模态力量有利于大规模预训练数据源的探索,例如带有交错帧和文本的视频、带有交错图像和文本的网页,以及网络规模的图像 - 文本对和视频 - 文本对。Emu 可以作为一般性的多模态界面,用于图像到文本和文本到图像任务,并支持上下文图像和文本生成。在许多零文和少文任务上,包括图像captioning、视觉问题回答、视频问题回答和文本到图像生成,Emu 都比先进的大型多模态模型表现出色。通过指令调整也展示了多模态助手等扩展功能,且表现出令人印象深刻的功能。
+
+基模型可以做图像生成任务，视频 VQA，而不仅仅是文本生成。
+
+支持的任务如下：
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/0a16764d-124c-40ee-891b-5276698c8b9f"/>
+</div>
+
+图像描述、图片 VQA，few shot 文本补全
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/26e0661d-b66e-4486-82f1-fa3e2da43253"/>
+</div>
+
+图生图，文生图，视频 VQA。
+
+## 架构
+
+整体架构如下：
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/089dd0c4-b911-4199-9167-2cd68e46aa9c"/>
+</div>
+
+Emu 由四部分组成:视觉编码器、因果 Transformer、多模态建模和视觉解码器。我们分别利用预训练的 EVA-CLIP、 LLaMA 和 Stable Diffusion 来初始化视觉编码器、多模态建模LLM和视觉解码器。
+
+首先图片输入到 EVA-CLIP 的编码器中，输出 vision embedding，考虑到后续需要直接回归连续的 vision embedding，但是它实际上没有因果关系，无法直接用，因此作者将其输入到因果 Transformer中使其变成有因果关系的  vision embedding。
+如果是视频，则拆分成一张一张图片，进行分别处理，帧和帧之前用分隔符合区分。
+
+以上图为例，输入序列包括一张图片，一段文本和一张后续的图片，首先对图片使用 EVA-CLIP + 因果 Transformer 将其转化为因果 vision embedding，然后就可以直接训练了。对于离散 token 采用 ce loss，对于连续 embedding 采用 l2 loss。
+
+在训练完成后，在单独微调 Stable Diffusion 模型使其可以进行文生图。
+
+以下描述来自翻译：
+给定任何交错有图像、文本和视频的序列,我们首先通过 EVA-CLIP 对图像进行编码为稠密的视觉特征，然后通过因果 Transformer 将编码转换为固定数量N个视觉因果嵌入。同样,我们将T帧的视频编码为T×N个视觉因果嵌入。分别在每张图像或帧前面和后面加上两个特殊的图像令牌[IMG]和 [/IMG],以表示编码后图像/帧嵌入的开始和结束。视觉因果嵌入与文本标记相结合形成多模态序列,并提供给多模态建模LLM进行统一的自回归建模。我们在每个序列的开始和结束分别附加 <s> 和 </s> 标记。在推断中，我们微调视觉解码器将视觉嵌入解码为真实的图像。
+视觉解码器: 我们使用潜在扩散模型来将视觉嵌入解码为图像,并采用 Stable Diffusion 的权重作为初始值。具体来说, 我们将Emu生成的 N 个视觉嵌入提供给扩散模型作为图像解码的条件。 我们用能够适应 Emu 和 Stable Diffusion 维度的新线性层替换稳定扩散中交叉注意力模块的线性投影。
+我们通过跨模态多种形式的网络规模数据预训练 Emu,包括图像 - 文本对(LAION-2B[53]、LAION-COCO[2])、交错图像 - 文本数据(MMC4[76])、视频 - 文本对(WebVid-10M[5]) 和我们收集的交错视频 - 文本数据(YT-Storyboard-1B)。所有这些数据都被表征为多模态序列,从中 Emu 在统一的自回归方式下按照预测下一个元素的目标学习。预训练后,我们微调一个图像解码器来将视觉嵌入转换成真实图像。
+
+The total number of parameters of Emu is 14B and is trained end-to-end.
+
+## 训练过程
+
+1. 预训练
+和前面描述的一样，采用自回归方式训练  EVA-CLIP 因果 Transformer、多模态建模 三个模块
+
+2. Visual Decoding 微调
+We freeze the Visual Encoder, Multimodal Modeling LLM in Emu, and the VAE in diffusion model during training, with only the parameters of U-Net updated
+
+3. Instruction Tuning
+我们在Emu上应用多模态指令调整,通过对公开可用数据集进行有监督微调,包括来自ShareGPT[74]和Alpaca[56]的语言指令、来自LLaVA[39]的图像-文本指令以及来自VideoChat[36]和Video-ChatGPT的视频指令,来使Emu与人类指令保持一致。
+
+在指令调整中,我们冻结预训练 Emu 的所有参数,仅微调低秩适应(LoRA)模块。
 
 # 其他
 

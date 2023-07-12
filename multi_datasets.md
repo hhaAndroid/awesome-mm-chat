@@ -187,8 +187,6 @@ Detecting Everything in the Open World: Towards Universal Object Detection
 
 ## 推理时候概率校准
 
-
-
 # DaTaSeg-重点
 
 UniDet 和 Detic 的作者，算是改进版，没开源。
@@ -313,7 +311,7 @@ CLIP 计算得到的文本嵌入向量本身就应该具备含义相近的类别
 hard loss 就是将从视觉特征对应的标签计算的 cosine similarity 中取出，然后采用 BCE 训练，其实就是普通的分类 loss，可以看上面的图示会比较清楚。
 soft loss 是作为一种正则，计算对应类别的 cosine similarity 和前面定义的语义相似性矩阵的 MSE Loss，某个类别的语义相似性向量实际上是该类别和其他所有类别的语义相似度。
 
-一旦使用 LScaleDet 进行训练，ScaleDet 就可以部署在任何包含可见或不可见类的上游或下游数据集上。通过将统一的标签空间替换为任何给定测试数据集的标签空间，ScaleDet 可以基于视觉语言相似性计算标签分配。
+一旦使用 ScaleDet 进行训练，ScaleDet 就可以部署在任何包含可见或不可见类的上游或下游数据集上。通过将统一的标签空间替换为任何给定测试数据集的标签空间，ScaleDet 可以基于视觉语言相似性计算标签分配。
 
 训练数据包括 LVIS/COCO/Objects365/OpenImages，训练后作者在 Object Detection in the Wild 任务上面测试。
 

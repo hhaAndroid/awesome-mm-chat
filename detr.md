@@ -780,5 +780,11 @@ else:
 
 dn_mask 是用于区分哪些是加了 DN 的
 
+# CO-DETR
+
+https://arxiv.org/pdf/2211.12860.pdf
+https://github.com/Sense-X/Co-DETR
+
+DETRs with Collaborative Hybrid Assignments Training
 
 

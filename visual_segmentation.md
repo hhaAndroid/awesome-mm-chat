@@ -622,6 +622,7 @@ https://github.com/henghuiding/ReLA
 
 https://github.com/MarkMoHR/Awesome-Referring-Image-Segmentation
 
+
 ## RAM
 
 [Recognize Anything: A Strong Image Tagging Model](https://recognize-anything.github.io/)

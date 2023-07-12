@@ -342,3 +342,8 @@ LayoutGPT: Compositional Visual Planning and Generation with Large Language Mode
 
 https://zhuanlan.zhihu.com/p/633621804
 
+# UniFormer
+
+https://github.com/Sense-X/UniFormer
+
+

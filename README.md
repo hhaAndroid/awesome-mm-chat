@@ -90,3 +90,8 @@ Parameter-Efficient Fine-Tuning
 ## DETR 系列代码理解
 
 具体见 [DETR](detr.md)
+
+## 训练和推理技术
+
+详情见 [technology](technology.md)
+
