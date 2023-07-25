@@ -648,6 +648,31 @@ We freeze the Visual Encoder, Multimodal Modeling LLM in Emu, and the VAE in dif
 
 在指令调整中,我们冻结预训练 Emu 的所有参数,仅微调低秩适应(LoRA)模块。
 
+# BuboGPT
+
+https://arxiv.org/pdf/2307.08581.pdf
+https://bubo-gpt.github.io/
+
+BuboGPT: Enabling Visual Grounding in Multi-Modal LLMs
+
+我们提出BuboGPT, 一个具有视觉定位能力的多模态LLM, 它可以在视觉、听觉和语言之间进行跨感觉交互, 提供对视觉物体和其他给定感觉类型的细粒度理解。 因此, 当 BuboGPT 为该物体生成响应或描述时, 它能指出该物体在图像中的具体位置。 我们的贡献有两个方面: 1) 基于SAM的现成视觉固定模块,它可以从句子中提取实体并在图像中找到对应的掩码。 2) 两阶段训练方案和指令数据集, 为联合文本-图像-音频理解提供能力。
+
+简单来说，就是做了音频、图片和文本对齐，可以对话和输出 visual grounding。
+
+基于 sam 来做 visual grounding
+
+<div align=center>
+<img src="https://github.com/hhaAndroid/awesome-mm-chat/assets/17425982/9d1d2670-db47-4562-8aa1-c0d4d37c3ebc"/>
+</div>
+
+然后再进行对齐训练
+
+<div align=center>
+<img src="https://github.com/hhaAndroid/awesome-mm-chat/assets/17425982/7dbe7554-3ad5-487e-8e23-a2c9fefffd1b"/>
+</div>
+
+总体感觉没有特别大的新意。
+
 # 其他
 
 https://zhuanlan.zhihu.com/p/639822513

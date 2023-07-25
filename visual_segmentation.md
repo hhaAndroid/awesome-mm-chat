@@ -399,11 +399,13 @@ X-Decoder 在诸多数据集上联合预训练，使其具备了各个任务的 
 
 ## OpenSeeD
 
+ICCV2023 
+
 论文： A Simple Framework for Open-Vocabulary Segmentation and Detection
 链接：https://arxiv.org/pdf/2303.08131.pdf
 github: https://github.com/IDEA-Research/OpenSeeD
 
-只开源了推理代码。基于 xdecoder 思想，提出了改进版本，支持目标检测，实例分割，全景分割和语义分割。
+代码已经开源。实际上是 mask dino 从闭集检测扩展到了开集的尝试。 基于 xdecoder 思想，提出了改进版本，支持目标检测，实例分割，全景分割和语义分割。
 
 Our OpenSeeD is the first open-vocabulary model that jointly learn on segmentation and detection.
 
@@ -426,6 +428,7 @@ Pc = Sim(Ps, T)
 ```
 
 Q 是 object query,Ps 是 decoded semantics，Pc 是 visual-semantic matching scores。其中的 Pm 是一个统一表示，包括实例 mask 和语义 mask。
+做法和常规的 OV 一样，也是直接学习语义向量，然后和文本向量计算相似性得到类别信息。
 
 考虑到不同任务要求的语义粒度不一样，例如全景分割和语义分割是需要预测背景的，而实例分割和目标检测不需要，如果用同样的 query 来预测不同的任务性能较差。因此作者将输入
 query 分成了 2 组： 前景 query 和背景 query。背景 query 用于预测 stuff mask 即为 Bridge Task Gap: Decoupled Foreground and Background Decoding 部分。
@@ -446,6 +449,23 @@ query 分成了 2 组： 前景 query 和背景 query。背景 query 用于预�
 作者在 coco 全景分割数据集和 object365 v1 和 v2数据集上面训练。v1 训练小模型，v2训练大模型。
 
 代码是基于 mask dino 和 x-decoder 构建。
+
+### 代码分析
+
+代码是在  x-decoder 上面构建的。模型结构和 mask2former 类似
+
+- resnet backbone 输出 4 个尺度的特征
+- 多尺度特征输入到 pixel_decoder (OpenSeeDEncoder) 中进行多尺度聚合和变换，内部是 MSDeformAttnTransformerEncoderOnly + FPN 结构，输出也是 4 个尺度的特征，加上增强过后的最大特征的mask_features，用于后续输出 mask
+- 输入到 OpenSeeDDecoder 中进行 decoder + head 学习
+
+类别预测是和语言向量比较相似度，而不是直接预测而来
+
+```python
+output_memory, output_proposals = gen_encoder_output_proposals(src_flatten, mask_flatten, spatial_shapes)
+output_memory = self.enc_output_norm(self.enc_output(output_memory))
+output_memory_ = output_memory @ self.class_embed
+enc_outputs_class_unselected = self.lang_encoder.compute_similarity(output_memory_) # b,l,num_cls
+```
 
 ## FreeSeg
 

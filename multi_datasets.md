@@ -350,5 +350,11 @@ MOE 系统。
 
 如何进行异构空间多任务多模型训练？ 难点在于 data distribution, architectures, task-specific modules, dataset scales, and sampling strategies 的设计上。
 
+# UOVN
 
+Unified Open-Vocabulary Dense Visual Prediction
+
+https://arxiv.org/pdf/2307.08238.pdf
+
+基于 mask2former 没有开源。
 

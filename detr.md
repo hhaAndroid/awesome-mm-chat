@@ -780,11 +780,142 @@ else:
 
 dn_mask 是用于区分哪些是加了 DN 的
 
+# Mask DINO
+
+CVPR2023
+
+https://github.com/IDEAResearch/MaskDINO
+
+Mask DINO: Towards A Unified Transformer-based Framework for Object Detection and Segmentation
+
+基于 DINO 和 Mask2Former 并拓展到检测和通用图像分割领域。
+
+首先分析了 DINO 直接做分割和 Mask2Former 直接做目标检测的问题，然后给出了几个解决方案。
+
+Mask DINO 做通用图像分割的做法是和 Mask2Former 一样，但是额外针对检测和 mask 任务进行了一些设计。
+
+作者主要是基于以下两个问题进行了改进：
+
+1）为什么不能检测和分割任务在基于 Transformer 的模型中相互帮助
+2) 是否有可能开发一种统一的架构来取代专门的架构？
+
+作者首先尝试对 DINO 和 Mask2Former 进行简单扩展，使其可以同时完成检测和分割任务，发现效果都不行。
+
+作者觉得主要原因还是任务的不同，一个是关注像素级别，一个是区域级别。
+
+Mask2Former中的query只需要比较每像素与图像特征的相似性，它们可能不知道每个实例的区域级别位置。相反，DINO 中的query并非旨在与这种低级特征交互以学习像素级表示。相反，它们编码丰富的位置信息和高级语义进行检测。
+
+Why cannot Mask2Former do detection well?
+
+1. 它的查询遵循 DETR中的设计，而无需像条件 DETR [26]、Anchor DETR [34] 和 DABDETR 中研究的那样利用更好的位置先验
+2. Mask2Former 在 Transformer 解码器中采用了掩码注意（带有注意掩码的多头注意力）。从具有高分辨率的前一层预测的注意掩码用作注意力计算的硬约束。它们既不高效也不灵活用于框预测
+3. Mask2Former不能逐层显式执行框细化。
+
+Why cannot DETR/DINO do segmentation well?
+
+1. DETR的分割头不是最优的。DETR 让每个查询嵌入和具有最小特征图的点积来计算注意力图，然后对它们进行上采样以获得掩码预测。这种设计缺乏来自主干的查询和更大的特征图之间的交互。也就是没有 pixdecoder
+2. 改进的检测模型中的特征与分割不一致即特征不对齐
+
+总而言之，就是 DINO 和 Mask2Former 都是对特定领域进行了大量专门优化，如果只是简单的扩展任务而没有特别设计，性能不会最好。需要一个能够将两者优点结合并能够对齐特征的操作。
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/c7e13dfa-8551-4cad-9a1c-4b0816997efb">
+</div>
+
+红色的地方表示是相比于 DINO 的改进，主要是3个模块。也引入了 pix decoder。
+
+**(1) 改进1：Unified and Enhanced Query Selection**
+
+原先的 DINO encoder 预测头输出是 cls 和 bbox 预测，现在多了额外的 mask 预测，然后 Query Selection 就可以利用预测的 mask 进行增强。
+
+每个token的分类分数被认为是选择排名靠前的特征并将它们馈送到解码器作为内容查询的置信度。所选特征还使用高分辨率特征图回归框和点积来预测掩码。
+
+请注意，我们在 Mask DINO 中初始化 content 和 anchor pos query，而 DINO 仅初始化 pos query, 其中 content 是直接来自 query_embedding，而不是来自 topk mem 输出值。
+
+在统一查询选择之后的初始阶段，掩码预测比框更准确。因此，在统一的查询选择之后，我们从预测掩码中导出框作为解码器更好的锚点框初始化。通过这种有效的任务合作，增强的框初始化可以大大提高检测性能。
+
+模型推理部分改动就是这个，其余两个改动是训练相关的。
+
+**(2) 改进二： Unified denoising for mask**
+
+由于掩码可以被视为框的更细粒度的表示，因此框和掩码是自然连接的。因此，我们可以将框视为掩码的噪声版本，并训练模型预测给定框的掩码作为去噪任务。给定用于掩码预测的框也被随机噪声，以实现更有效的掩码去噪训练。
+
+**(3) Hybrid matching**
+
+我们添加了一个掩码预测损失来鼓励更准确和一致匹配。实际上就是匹配代价考虑了 mask。
+
+# DDQ
+
+CVPR2023
+
 # CO-DETR
+
+ICCV2023
 
 https://arxiv.org/pdf/2211.12860.pdf
 https://github.com/Sense-X/Co-DETR
 
 DETRs with Collaborative Hybrid Assignments Training
 
+在DETR中分配为正样本的查询太少，具有一对一集匹配会导致对编码器输出的稀疏监督，这大大损害了编码器和解码器的判别特征学习。 我们提出了一种新的协作混合分配训练方案，即Co-DETR，从通用的标签分配方式中学习更高效和有效的基于DETR的检测器。
 
+这种新的训练方案可以通过训练由 ATSS、FCOS 和 Faster RCNN 等一对多标签分配监督的多个并行辅助头来轻松增强编码器在端到端检测器中的学习能力。此外，我们通过从这些辅助头中提取正坐标来进行额外的定制正查询，以提高解码器中正样本的训练效率。在推理中，这些辅助头被丢弃，因此我们的方法不需要对原始检测器引入额外的参数和计算成本，而不需要手工制作的非最大抑制(NMS)。
+
+作者通过一些分析，发现核心原因在于分配为正样本的查询太少，因此核心还是希望加入更多的正样本 query。因此引入了 one-to-many 的匹配方式，并且不能抛弃不需要nms这个特点，所以是以辅助头的形式加入的。
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/81edbb1d-b98d-4b0e-bcde-5feea67991ab">
+</div>
+
+全文思想和做法非常简单，但是因为用到的模块比较多。
+
+(1) 图片输入到 resnet50 中提取多尺度特征
+(2) 将多尺度特征输入到 deformable detr encoder 中进行特征提取
+(3) 将输出的特征输入到 deformable detr decoder 中进行 bbox 和 cls 预测，此次采用的是 one-to-one 匹配规则
+(4) 参考 vitdet，将输出的特征进行变换即输入到 ms adapter 里面得到多尺度特征
+(5) 将多尺度特征直接输入到 one-stage head 例如 atss head 里面进行 cls 和 bbox 预测，这个地方采用正常的 atss loss 训练即可
+(6) 将多尺度特征直接输入到 two-stage rpn 和 roi head 里面进行 cls 和 bbox 预测
+(7) 将各个辅助 head 预测的 bbox 经过处理作为高质量正样本 query 再次输入到 deformable detr decoder 中进行 bbox 和 cls 预测，此时不需要再次匹配，直接预测即可
+
+辅助 head 可以是任意类型，也可以是任意多个，可以是 one-stage 也可以是 two-stage 混合等等。
+
+推理时候可以只需要 deformable detr decoder head，而不需要辅助 head。当然如果你想验证辅助 head 性能，也可以的。
+
+总体来看，思想还是比较好理解的，就是如果用了非常多的辅助 head，训练成本会增加不少，而且因为引入了第 7 步骤，代码复杂度会增加不少。
+
+# Cascade-DETR
+
+iccv2023
+
+Cascade-DETR: Delving into High-Quality Universal Object Detection
+https://arxiv.org/abs/2307.11035
+
+# Focus-DETR
+
+ICCV2023
+
+Less is More: Focus Attention for Efficient DETR
+https://arxiv.org/abs/2307.12612
+
+meishayis
+
+# RefineBox
+
+Enhancing Your Trained DETRs with Box Refinement  
+https://arxiv.org/pdf/2307.11828.pdf
+
+可以接任意的 DETR 类检测器，然后进行 refine，从而提高性能。采用的是 two-stage 思想。
+
+一个亮点是，检测器不需要训练，只需要训练 FPN 和 refine 模块，算是一个插件，比较方便
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/8d9603f4-c94d-4057-a25f-6ed2a039649b">
+</div>
+
+完整结构图如下所示：
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/a08901ef-666d-46d1-b1aa-a6915816995c">
+</div>
+
+训练成本其实也不算少，是训练 DAB-DETR 的一半。
