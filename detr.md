@@ -3,7 +3,53 @@
 MultiheadAttention 中有两个核心参数：
 
 - attn_mask 只用于Decoder训练时的解码过程，作用是掩盖掉当前时刻之后的信息，让模型只能看到当前时刻（包括）之前的信息。维度是 (L, S) , `L` is the target sequence length, and :math:`S` is the source sequence length
-- key_padding_mask 指的是在encoder和Decoder的输入中，由于每个batch的序列长短不一，被padding的内容需要用key_padding_mask来标识出来，然后在计算注意力权重的时候忽略掉这部分信息。维度是 (B, S)
+- key_padding_mask 指的是在 encoder 和 Decoder 的输入中，由于每个batch的序列长短不一，被padding的内容需要用key_padding_mask来标识出来，然后在计算注意力权重的时候忽略掉这部分信息。维度是 (B, S)
+
+a fixed small set of learned object queries 才是关键。
+
+点集预测模式，主要是两个贡献：
+
+1. 引入了双边匹配 loss
+2. 并行解码，而非传统的 transformer 的序列解码方式
+
+DETR 的训练设置与标准对象检测器不同。并且辅助loss非常关键，我们彻底探讨了哪些组件对性能至关重要。
+
+DETR 在算 loss 时候使用的是普通的 CE Loss，但是考虑到前后景不平衡，专门对背景类进行 0.1 权重衰减。
+
+```python
+bbox_head=dict(
+    type='DETRHead',
+    num_classes=80,
+    embed_dims=256,
+    loss_cls=dict(
+        type='CrossEntropyLoss', 
+        bg_cls_weight=0.1, # factor
+        use_sigmoid=False,
+        loss_weight=1.0,
+        class_weight=1.0),
+    loss_bbox=dict(type='L1Loss', loss_weight=5.0),
+    loss_iou=dict(type='GIoULoss', loss_weight=2.0)),
+```
+
+那如果直接换成 Focal Loss 会有多少提升？ 后续论文好像换了
+
+在 bbox loss 方面，作者是直接预测归一化的 cxcywh 坐标，如果只采用 l1 loss那么会有尺度问题，因此作者还引入了 giou loss，一定程度上克服这个目标尺度问题。
+
+在 DETR 系列中, auxiliary losses 非常重要。我们在每个解码器层之后添加预测 FFN 和匈牙利损失。所有预测 FFN 共享参数。我们使用一个额外的共享层范数将输入归一化为来自不同解码器层的预测 FFN。 
+也就是不同的 decoder 层都是共享同一套 head。  共享还是不共享？ 是一个问题？
+
+DETR 系列中需要用强增强，否则性能不行。为了帮助通过编码器的自注意力学习全局关系，我们还在训练期间应用了随机裁剪增强，将性能提高了大约 1 AP。
+
+注意：At inference time, some slots predict empty class. To optimize for AP, we override the prediction of these slots with the second highest scoring class, using the corresponding confidence. This improves AP by 2 points compared to filtering out empty slots.
+其意思是在评估或者说刷点时候，不做任何 score thr 处理，而是直接强行取前 100 个检测框，虽然里面肯定有不少是背景，但是这样可以提升大概 2 个点 mAP。实际应用肯定还是要用阈值处理的。
+
+DETR 虽然说训练的整体 mAP 性能和单尺度的 Faster RCNN 差不多，但是小物体差距巨大，持平的原因是大物体性能很高。原因是啥？
+
+作者分析了 decoder 层参数的重要性。可以发现第一个层输出性能和最后一层性能差了 8 个点，而且前面层更需要 NMS 后处理，到最后的层实际上就不太需要 NMS了。
+Transformer 的单个解码层无法计算输出元素之间的任何互相关，因此容易对同一对象进行多次预测。在第二层和后续层中，激活上的自注意力机制允许模型抑制重复预测。我们观察到 NMS 带来的改进随着深度的增加而减少。
+在最后一层，我们观察到应用了 NMS 还会给 AP 带来一些下降，因为 NMS 错误地删除了真阳性预测。也就是说 NMS 最好不要，对性能还有点影响。
+
+DETR 论文里面也推广到了全景分割领域，但是由于后续有更好的 maskformer，因此就不是重点了。
 
 # DeformableDETR
 
@@ -807,9 +853,9 @@ Mask2Former中的query只需要比较每像素与图像特征的相似性，它�
 
 Why cannot Mask2Former do detection well?
 
-1. 它的查询遵循 DETR中的设计，而无需像条件 DETR [26]、Anchor DETR [34] 和 DABDETR 中研究的那样利用更好的位置先验
+1. 它的查询遵循 DETR中的设计，而无需像条件 DETR、Anchor DETR 和 DABDETR 中研究的那样利用更好的位置先验
 2. Mask2Former 在 Transformer 解码器中采用了掩码注意（带有注意掩码的多头注意力）。从具有高分辨率的前一层预测的注意掩码用作注意力计算的硬约束。它们既不高效也不灵活用于框预测
-3. Mask2Former不能逐层显式执行框细化。
+3. Mask2Former 不能逐层显式执行框细化。
 
 Why cannot DETR/DINO do segmentation well?
 
@@ -843,6 +889,16 @@ Why cannot DETR/DINO do segmentation well?
 **(3) Hybrid matching**
 
 我们添加了一个掩码预测损失来鼓励更准确和一致匹配。实际上就是匹配代价考虑了 mask。
+
+## 源码分析
+
+MaskDINO 目前开源了三个任务：全景分割，实例分割和语义分割，需要单独训练。如果只用检测数据集那就是 DINO 了，联合检测和分割数据训练，作者没有提供配置。
+
+一个需要注意的细节：为了统一三个不同任务，让其只是在数据层面有差异，其余部分没有差异。作者设计的 loss 始终是 mask loss + bbox loss + cls loss，
+也就是说即使是语义分割，也会强行计算 gt bbox，然后进行监督。这个是否合理有待商榷？ mask2former 是没有考虑 bbox 监督的。对于全景分割，stuff seg 标注也要强行计算 bbox，然后计算 bbox loss。
+作者如此设计一来是想统一整个架构，而来是觉得检测和分割可以共同提升，但是事实真的是这样吗？
+
+
 
 # DDQ
 

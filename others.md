@@ -34,3 +34,8 @@ https://github.com/lxtGH/Awesome-Segmentation-With-Transformer
 
 https://github.com/RUCAIBox/LLMSurvey
 
+## MMF
+
+A modular framework for vision & language multimodal research from Facebook AI Research (FAIR)  
+https://github.com/facebookresearch/mmf
+

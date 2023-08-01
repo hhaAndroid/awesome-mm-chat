@@ -358,3 +358,18 @@ https://arxiv.org/pdf/2307.08238.pdf
 
 基于 mask2former 没有开源。
 
+# UniT
+UniT: Multimodal Multitask Learning with a Unified Transformer
+https://arxiv.org/abs/2102.10772v3
+
+# PolyViT
+
+PolyViT: Co-training Vision Transformers on Images, Videos and Audio
+https://arxiv.org/abs/2111.12993
+
+
+# Prompt Guided Transformer for Multi-Task Dense Prediction
+
+https://arxiv.org/pdf/2307.15362.pdf
+
+

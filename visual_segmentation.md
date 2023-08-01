@@ -6,6 +6,8 @@ X-Decoder 基于 Mask2Former，因此必须要理解 MaskFormer 和 Mask2Former�
 
 论文名： Per-Pixel Classification is Not All You Need for Semantic Segmentation
 
+论文虽然是语义分割，但是实际上是通用分割。
+
 由于论文非常有名，知乎有不少不错的解释，例如 https://zhuanlan.zhihu.com/p/389457610 和 https://zhuanlan.zhihu.com/p/532168933
 本文只写几个核心部分。
 
@@ -32,6 +34,50 @@ Mask classification 和 per-pixel classification 最大的不同在于：mask cl
 因为query个数和类别数不一样，所以我们也借鉴了DETR中bipartite matching loss的设计思想来训练我们的模型。
 
 MMDet 中已经实现了，因此可以直接看 MMDet 的实现。
+
+推理过程有两种做法，作者发现对于不同的任务可以采用不同的做法，性能有区别。
+
+1. General inference： 先对预测类别进行 argmax 操作得到 N 个实例的预测类别值，然后基于预测类别索引，从 N 个二值 mask 中提取对应的掩码
+
+```python
+scores, labels = F.softmax(mask_cls, dim=-1).max(-1) # N,1
+mask_pred = mask_pred.sigmoid() # N,H,W
+
+keep = labels.ne(self.sem_seg_head.num_classes) & (scores > self.object_mask_threshold)
+cur_masks = mask_pred[keep] # M,H,W
+cur_mask_cls = mask_cls[keep]
+cur_scores = scores[keep] # M,1
+
+# M,1,1 * M,H,W -> M,H,W
+cur_prob_masks = cur_scores.view(-1, 1, 1) * cur_masks
+
+# H, W 里面的每个值代表类别 id
+cur_mask_ids = cur_prob_masks.argmax(0)
+```
+
+这个后处理用于实例和全景分割
+
+2. Semantic inference： 如上图所示，将类别预测和二值 mask 预测直接相乘，然后再 argmax 确定类别，不需要阈值
+
+```python
+def semantic_inference(self, mask_cls, mask_pred):
+    mask_cls = F.softmax(mask_cls, dim=-1)[..., :-1] # N,C
+    mask_pred = mask_pred.sigmoid() # N,H,W
+    semseg = torch.einsum("qc,qhw->chw", mask_cls, mask_pred) # C,H,W
+    return semseg
+```
+
+这个后处理用于语义分割。作者发现这样做性能最好。
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/ef69d710-53ef-4978-8437-afc3db4e6350"/>
+</div>
+
+一个重要发现：MaskFormer 也与使用单个解码器层进行语义分割具有竞争力，而对于实例级分割，需要多层从最终预测中删除重复项。这也侧面说明语义分割任务相对来说更简单些。
+
+通过对全景分割的 PQ 和 SQ 指标进行对比，发现 MaskFormer 在识别质量 (RQSt) 方面表现更好，同时落后于逐像素分割质量 (SQSt)。这一观察表明，在类识别相对容易解决的数据集上，基于掩码分类的方法的主要挑战是像素级精度（即掩码质量），这也是目前通用分割的重点优化方向。
+
+
 
 从代码来看，代码和架构图是对不上的。以 `configs/maskformer/maskformer_r50_ms-16xb1-75e_coco.py` 为例
 
@@ -293,6 +339,11 @@ for i in range(self.num_transformer_decoder_layers):
         query_feat, mask_features, multi_scale_memorys[
             (i + 1) % self.num_transformer_feat_level].shape[-2:])
 ```
+## Open-Vocabulary Universal Image Segmentation with MaskCLIP
+
+ICML 2023  
+https://arxiv.org/pdf/2208.08984.pdf
+
 
 ## X-Decoder
 
@@ -546,6 +597,50 @@ OneFormer: One Transformer to Rule Universal Image Segmentation
 OneFormer 架构类似 one backbone + N Head 模式，在测试时候不仅要指定 task，还需要指定用哪个 head，这应该和实际用户需求不符合。用户实际上需要的应该是类别并集，这样相当于有增量功能。
 
 DaTaSeg 算法其实也没有解决这个问题，但是由于他的类别 token 计算仅仅是最后的点乘，所以实际上要做多数据集类别合并其实比较容易。
+
+
+**问题1： 为啥会有 coco_2017_val_panoptic2instance 这种东西？**
+
+coco 本身就有实例分割标注，为啥要通过全景分割转 ins，而且实测发现coco_2017_val_panoptic2instance转出的实例分割结果更高0.1。作者在论文里面说了
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/560e604d-7320-47fd-b4ce-380e949349f0"/>
+</div>
+
+因为全景分割转实例分割标注比 val_2017 更准确，也和我们的联合训练更一致。 可以看到，实例分割标注会缺失一些标注，从全景分割导出会更加合适。
+
+
+**问题2： task为全景分割时候，是可以预测所有任务的，如果设置为语义分割，实际上也可以解码出实例分割的，这时候是效果很差吗？**
+
+论文里面对这个部分有实验。 
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/30dd8ce0-91a9-4909-93da-5087b8427991"/>
+</div>
+
+从结果来看，训练时候切换不同的 task，希望起到 focal 的效果。 但是实际上在测试时候只需要切换为panoptic就行，因为其他两个模型都是只关注某一个任务，全景分割是包括所有任务的，而且性能几乎都是最优的。
+
+其实训练全景分割时候就已经是全量数据了，是否有必要随机切换任务训练？ 从作者做的对比实验来看有必要
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/9131cfd2-6669-495f-8ced-6ab715aa6a79"/>
+</div>
+
+如果只训练全景分割，虽然联合训练本质上也是这些数据，但是效果不一样，联合训练效果更好。 论文的解释是：OneFormer uses a task token to condition the model on the task in focus, making our architecture task-guided for training, and task-dynamic for inference, all with a single model.
+简单来说就是全景分割训练时候对三个分割任务是等价的，在训练时候随机引入其余两个特定任务，并且随机切换，会让模型在训练时候会关注不同的任务，从而最终性能全部有提升。我们希望达到这个效果。
+
+oneformer 和 maskdino 是同时期作品，但是 maskdino 更好，这个没法公平对比，不同的地方太多了。 或许可以将 oneformer 和 maskdino 结合。
+
+**问题3：oneformer 论文最重要的超参应该是对比loss权重，看对比实验影响很大。这也是本身最大的创新点，如果不考虑对比Loss,基本上和 mask2former没区别。**
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/9a4cc3f6-d540-40cb-bf04-1817fca1a48c"/>
+</div>
+
+**问题4：是否可以扩展为使用不同源域数据训练**
+
+oneformer 每个实验的图片源其实都是同一个，然后标注是全景分割标注，这个对用户来说要求很高。如果可以用不同源标注都只是标注其中一个任务的来训练，就更加合理了，更加贴近实际。
+
 
 ## Open-World Entity Segmentation
 

@@ -1,4 +1,81 @@
-## Towards Open Vocabulary Learning: A Survey
+# OVR-CNN
+
+开山之作。
+
+弱监督和无监督离现实太遥远，开放词汇刚好！
+
+需要先明确 OVD 的定义。
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/a919eb87-0fc5-40c9-ab2d-f34b0c5ae941"/>
+</div>
+
+需要区分这些概念。 关于类别一般会非常两类： base 类和 novel 或者 target 类，其中 base 类别用于训练，而 novel 类只用于测试。
+
+- Open-set/Open-world/OOD 都是同一个含义，是指的训练在 base 类别空间，测试只需要能够检测出 novel 类就行，不需要区分到底是哪个 novel 类
+- Zero-shot 是指的训练在 base 类别空间，测试需要能够检测出 novel 类别空间，可以看出这个一个比较难得任务
+- open vocabulary 是基于 Zero-shot 但是它允许使用额外的低成本训练数据或预先训练的视觉语言模型如CLIP。也就是说在训练阶段，类别空间可以包括 novel，但是不允许采用直接的 bbox 监督
+
+可以看出 OVD 是一个更加实用更加贴近实际的算法。也就是说 zero-shot 不是不允许引入文本，而是在训练中一定不能出现 novel 类别。 上述三者强调的是类别空间，图片其实没有限制，也就是说训练图片中可以出现 novel 类但是你不能用有监督训练。
+
+还需要明白 Visual grounding 含义：给定图片和一句话，模型输出该文本对应的 bbox，一般来说这个 bbox 通常就是 1 个。
+
+OVR-CNN 的训练过程会稍微复杂，因为当时还没有用 CLIP, 需要先预训练，然后再进行 coco 训练。
+
+不管咋说，将任何一个封闭集目标检测器转化为 OVD，则只需要改网络输出就行，如下所示：
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/ec5e71ee-6a60-4e69-92ea-3f490f5677a0"/>
+</div>
+
+将原先的 cls head 移除，然后换成直接输出 cls embedding，将该 cls embedding 和文本的 embedding 进行相似度计算，判断属于哪个类就行。
+
+回到 OVR-CNN 算法，其训练流程如下所示：
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/64e0003f-b2e3-4594-b279-12b94a4cfd82"/>
+</div>
+
+训练包括两个步骤：
+1. 使用 COCO Captions 预训练 ResNet50/V2L 模块/多模态融合模块
+
+`python -m torch.distributed.launch --nproc_per_node=8 tools/train_net.py --config-file configs/mmss_v07.yaml --skip-test OUTPUT_DIR ~/runs/vltrain/121`
+
+2. COCO 目标检测任务训练，需要加载第一步的 ResNet 预训练和 V2L 模块， 文本 Embedding 和 V2L 也不需要训练。也就是只是训练 ResNet 和纯检测部分。V2L 模块用做 roihead 中 emb_pred 层的权重初始值。
+
+`python -m torch.distributed.launch --nproc_per_node=8 tools/train_net.py --config-file configs/zeroshot_v06.yaml OUTPUT_DIR ~/runs/maskrcnn/130`
+
+为了能够判断背景，作者增加了全0的 embedding，实验表明不需要设置为可学习，固定为 0 就行。
+
+**(1) 预训练**
+
+采用 PixelBERT 里面做法，有一点改动。
+
+图片通过 ResNet-50，输出 7x7 个 2048 的特征，然后接入一个 V2L 层变成 768 维度，将其进行转换，同时将对应的 caption 描述输入到预训练好的 BERT 中；将文本和 V2L 的视觉特征 concat 一起输入到后面的多模态融合 Transformer 中。
+
+预训练的文本 BERT 不参与训练，其余参数都要训练。
+
+训练 Loss 包括主 loss 和辅助 loss。 主 loss 是 grounding loss 即每个文本的词嵌入应该接近它们对应的图像区域嵌入，但是因为 COCO Captions 并没有给出文本中单词和图形区域 bbox 对应关系，而是一句话对应一个 bbox。
+因此我们为每个图像-标题对定义了一个全局 grounding 分数，它是词-区域对的局部 grounding 分数的加权平均值，应该最大化匹配图像标题对的全局接地分数，而对于不匹配对，它应该最小化。
+所以实际上还是将整个文本当做一个单词，然后和图像特征匹配，相当于没有考虑区域信息。实际上就是一个对比 loss。
+
+这个 grounding loss 其实就是 itc loss，感觉没有啥不一样地方。
+
+为了避免过拟合，作者还参考 PixelBERT 加入了 MIM 训练方式：用 [MASK] 标记随机替换每个标题中的一些单词，并尝试使用掩码标记的多模式嵌入来猜测被屏蔽的单词。
+
+然后还采用了 image-text matching loss，一共有 3 个 loss。
+
+COCO Captions 数据集是每张图片对应 5 个描述，描述是全局描述，可能会包括多个物体，但是并没有提供对应的 bbox 标注。
+
+可以参考 BLIP 来理解各类图片匹配的 loss。
+
+PixelBERT 图示如下
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/ce4afbba-fa86-436b-bc70-296ceeed02bf"/>
+</div>
+
+# Towards Open Vocabulary Learning: A Survey
 https://arxiv.org/abs/2306.15880
 
 # OWL-ViT
