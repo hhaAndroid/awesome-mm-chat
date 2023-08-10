@@ -673,6 +673,12 @@ BuboGPT: Enabling Visual Grounding in Multi-Modal LLMs
 
 总体感觉没有特别大的新意。
 
+# All-Seeing Project
+
+he All-Seeing Project: Towards Panoptic Visual Recognition and Understanding of the Open World  
+https://arxiv.org/abs/2308.01907
+
+
 # 其他
 
 https://zhuanlan.zhihu.com/p/639822513

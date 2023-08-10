@@ -339,10 +339,20 @@ for i in range(self.num_transformer_decoder_layers):
         query_feat, mask_features, multi_scale_memorys[
             (i + 1) % self.num_transformer_feat_level].shape[-2:])
 ```
-## Open-Vocabulary Universal Image Segmentation with MaskCLIP
+## MaskCLIP
+Open-Vocabulary Universal Image Segmentation with MaskCLIP
 
 ICML 2023  
+
 https://arxiv.org/pdf/2208.08984.pdf
+
+第一篇开放词汇通用分割算法。
+
+我们利用预先训练的CLIP图像和文本嵌入模型，这些模型被映射到相同的空间。我们首先构建了一个基线方法，用于在没有训练的情况下使用 CLIP 模型进行开放词汇全景分割。然后，我们开发了一种新的算法MaskCLIP，这是一种基于Transformer的方法，可以有效地利用预先训练的部分/密集CLIP特征，而无需进行繁重的重新训练。MaskCLIP的关键组件是一个相对掩码注意(RMA)模块，它将掩码标记与预先训练的基于vit-base的CLIP主干无缝集成
+
+
+
+
 
 
 ## X-Decoder
@@ -737,7 +747,6 @@ https://github.com/henghuiding/ReLA
 
 https://github.com/MarkMoHR/Awesome-Referring-Image-Segmentation
 
-
 ## RAM
 
 [Recognize Anything: A Strong Image Tagging Model](https://recognize-anything.github.io/)
@@ -761,4 +770,78 @@ https://arxiv.org/pdf/2307.00764.pdf
 https://github.com/berkeley-hipie/HIPIE
 
 Hierarchical Open-vocabulary Universal Image Segmentation
+
+## LISA
+
+LISA: REASONING SEGMENTATION VIA LARGE LANGUAGE MODEL  
+https://arxiv.org/pdf/2308.00692.pdf  
+https://github.com/dvlab-research/LISA  
+
+通过大语言模型实现推理式分割。
+
+为什么我们需要推理式分割能力，作者用了一个例子说明。假设我们让机器人实现：换电视频道功能，目前的指代性分割算法做不到，一般需要说：请先走到桌子前面，然后找到电视遥控，然后按按钮去切换频道。
+
+这有点麻烦，系统缺少推理能力。
+
+推理式分割： 给定复杂指令和图片，输出对应的实例 mask。
+
+作者还专门自己做了一个评测数据集，蛮好的。 模型具备： 1）复杂推理2）世界知识3）解释性回答4）多回合对话。 仅用 239 个推理分割图像-指令对对模型进行微调，可以进一步提高性能。
+
+我们的工作目标是：1)有效地将分割能力注入到多模态的llm中，2)解锁当前感知系统的自我推理能力
+
+由于缺乏定量评价，必须为推理分割任务建立一个基准。为了确保可靠的评估，我们从openimages和ScanNetv2中收集了一组图像，用隐式文本指令和高质量的目标掩码对它们进行注释。我们的文本指令包括两种类型： 1)短语；2)长句子，所得到的推理seg基准测试包括总共1218个图像-指令对。该数据集被进一步划分为三个部分：训练、val和测试，分别包含239、200和779个图像-指令对。由于基准测试的主要目的是进行评估，因此验证和测试集包含了更多的图像指令样本。
+
+数据集实例：
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/f3d18bd8-60bf-4bf4-bbfe-0decddf1659e"/>
+</div>
+
+模型架构：
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/48805506-49f9-4baf-a293-246d1da635e0"/>
+</div>
+
+如何让 MLLM 具备输出 mask 能力？ 之前的做法可以参考 VisionLLM 输出的是采用 LLM 的 polygon 格式，使用多边形序列的端到端训练会引入优化方面的挑战，并可能会损害泛化能力，除非使用大量的数据和计算资源。例如，训练一个7B模型，VisionLLM需要4个×8 NVIDIA 80Ga100gpu和50个epoch，这在计算上是禁止的。相比之下，训练LISA-7B在8个NVIDIA 24G3090gpu上只需要10,000个训练步骤。
+
+因此本文解锁了一种新的输出格式，我觉得这个最有参考价值，这种模式容易推广到任何 dense 任务，当然也可以是稀疏任务。
+
+作者的做法是插入一个特定的 token，表示为 <SEG>， 将改特殊词输入到词汇表里面。当希望模型能够预测 mask 时候，让 MLLM 必须输出 <SEG> 这个 token，然后将这个 token 对应的隐含层输出输入到 decoder 中，这个隐含层输出
+起到了 mask2former 中的 mask embedding 的作用。
+
+具体做法是：
+
+1. 将图片输入到 ViT 中进行视觉编码
+2. 将图片和指令输入到 LLAVA 多模态LLM 中，输出一段文本，如果是 VQA 任务，则正常对话就行，如果是希望输出 mask，那么 MLLM 输出中必须要包括 <SEG> token
+3. 将这个 token 对应的隐含层输出输入到 decoder 中,输出二值 mask
+
+实际上上半部分就是 SAM，下半部分是 LLAVA。 模型训练包括文本生成 loss 和 mask loss，比较简单合理。
+
+训练数据包括3部分：
+
+1. 语义分割数据集： 在训练过程中，我们为每个图像随机选择几个类别，生成符合视觉问答格式的数据。模板是  “USER: <IMAGE> Can you segment the {CLASS NAME} in this image?  ASSISTANT: It is <SEG>.”, 我们采用了ADE20K、COCO-Stuff和LVIS-PACO部分分割数据集。
+2. ref seg 数据集： “USER: <IMAGE> Can you segment {description} in this image? ASSISTANT: Sure, it is <SEG>.”, where {description} is the given  explicit description. For this part, we adopt refCOCO, refCOCO+, refCOCOg, and refCLEF datasets.
+3. VQA 数据集：为了保持多模态LLM具有的原始视觉问题回答（VQA）能力，我们在训练过程中还包括了VQA数据集。我们直接使用GPT-4生成的LLaVA-Deult-150k数据
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/6cf5c72e-0237-429f-ae0a-1b7fb9f8aced"/>
+</div>
+
+值得注意的是，训练集不包括任何推理分割样本。相反，它只包含在查询文本中显式表示目标对象的示例。令人惊讶的是，即使没有复杂的推理训练数据，丽莎在推理seg基准测试上也表现出了令人印象深刻的零射击能力。此外，我们发现，通过仅对239对图像指令推理分割对模型进行微调，可以进一步提高性能
+
+LLM 具备很大的随机性输出，如何保证一定会输出 <SEG>？ 可以通过一些例子看出端倪
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/54f92304-1a24-4f41-8670-7c5f4dda3dda"/>
+</div>
+
+可以发现，在推理时候，用户会显式输入： Please output segmentation mask. 促使模型输出 <SEG>，如果是普通 VQA 对话，则不会提供这个说法。
+
+我们采用8个NVIDIA 24G3090gpu进行培训。训练脚本是基于deepspeed引擎。我们使用AdamW优化器，学习率和权重衰减分别设置为0.0003和0。我们还采用warmupdecaylr作为学习速率调度器，其中预热迭代被设置为100。文本生成损失λtxt生成和掩模损失λmask的权值分别设置为1.0和1.0，bce损失λbce和骰子损失λdice的权值分别设置为2.0和0.5。另外，每个设备的批量大小设置为2，梯度积累步骤设置为10。在训练过程中，我们为语义分割数据集中的每个图像最多选择3个类别。
+
+我们相信，我们的工作将为 llm 和以视觉为中心的任务的结合方向提供新的思路。
+
+"parse grounding" 和 "referring expression comprehension" 的区别是啥？ 没有特别理解？
+
 

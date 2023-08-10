@@ -1,3 +1,5 @@
+我正在飞书上面整理 DETR 系列相关进展，因此本文档内容不会写的很细。后续会公布详细的DETR 系列相关进展飞书链接
+
 # DETR
 
 MultiheadAttention 中有两个核心参数：
@@ -36,7 +38,7 @@ bbox_head=dict(
 在 bbox loss 方面，作者是直接预测归一化的 cxcywh 坐标，如果只采用 l1 loss那么会有尺度问题，因此作者还引入了 giou loss，一定程度上克服这个目标尺度问题。
 
 在 DETR 系列中, auxiliary losses 非常重要。我们在每个解码器层之后添加预测 FFN 和匈牙利损失。所有预测 FFN 共享参数。我们使用一个额外的共享层范数将输入归一化为来自不同解码器层的预测 FFN。 
-也就是不同的 decoder 层都是共享同一套 head。  共享还是不共享？ 是一个问题？
+也就是不同的 decoder 层都是共享同一套 head。 共享还是不共享？ 是一个问题？
 
 DETR 系列中需要用强增强，否则性能不行。为了帮助通过编码器的自注意力学习全局关系，我们还在训练期间应用了随机裁剪增强，将性能提高了大约 1 AP。
 
@@ -705,7 +707,6 @@ sa_output = self.forward_attn(
 query = query + self.proj_drop(sa_output)
 ```
 
-
 对于 cross-attention 层，需要将 query 和 key 都解耦为 content 和 spatial，对于 spatial 显示引入可学习的参考点
 
 ```python
@@ -899,10 +900,11 @@ MaskDINO 目前开源了三个任务：全景分割，实例分割和语义分�
 作者如此设计一来是想统一整个架构，而来是觉得检测和分割可以共同提升，但是事实真的是这样吗？
 
 
-
 # DDQ
+CVPR2023    
+Dense Distinct Query for End-to-End Object Detection  
+https://zhuanlan.zhihu.com/p/631607906  官方解读
 
-CVPR2023
 
 # CO-DETR
 
@@ -938,6 +940,11 @@ DETRs with Collaborative Hybrid Assignments Training
 推理时候可以只需要 deformable detr decoder head，而不需要辅助 head。当然如果你想验证辅助 head 性能，也可以的。
 
 总体来看，思想还是比较好理解的，就是如果用了非常多的辅助 head，训练成本会增加不少，而且因为引入了第 7 步骤，代码复杂度会增加不少。
+
+测试了 detr one-stage 和 two-stage， 为啥 two-stage 性能比前面两个差了很多，前面两个是 52.1 49.4，最后这个只有 47.9，这个是为啥呢？
+原因是： faster rcnn 本身的性能就比 atss 低 2 个点，所以可能会出现这个问题。不过原则上 LSJ 情况 faster rcnn 性能应该和 atss 类似才是。估计是 faster rcnn baseline 太低或者说 lsj 下需要特别设置下参数。
+经查证，不管再啥设置下，atss 始终比 faster rcnn 高 2 个点。
+
 
 # Cascade-DETR
 
@@ -975,3 +982,33 @@ https://arxiv.org/pdf/2307.11828.pdf
 </div>
 
 训练成本其实也不算少，是训练 DAB-DETR 的一半。
+
+# ViTDet
+
+Exploring Plain Vision Transformer Backbones for Object Detection
+
+https://zhuanlan.zhihu.com/p/548147089
+
+#  ViT-Adapter 系列
+
+# Group DETR 和 Group DETR V2
+
+# Align DETR
+
+# H-DETR
+
+# Anchor DETR
+
+
+# DETR 应用于密集场景
+
+DDQ、
+
+DETR 研究分支，包括预训练。
+
+# Mask Frozen-DETR
+
+Mask Frozen-DETR: High Quality Instance Segmentation with One GPU
+
+https://arxiv.org/pdf/2308.03747.pdf
+
