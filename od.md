@@ -55,3 +55,9 @@ https://github.com/shikras/d-cube
 
 更多案例如上所属。
 
+# Bridging Cross-task Protocol Inconsistency for Distillation in Dense Object Detection
+
+ICCV2023
+
+https://arxiv.org/pdf/2308.14286.pdf
+

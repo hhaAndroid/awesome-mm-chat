@@ -845,3 +845,18 @@ LLM 具备很大的随机性输出，如何保证一定会输出 <SEG>？ 可以
 "parse grounding" 和 "referring expression comprehension" 的区别是啥？ 没有特别理解？
 
 
+# Referring Image Segmentation Using Text Supervision
+
+ICCV2023
+
+https://arxiv.org/pdf/2308.14575.pdf
+
+https://github.com/fawnliu/TRIS
+
+# Beyond One-to-One: Rethinking the Referring Image Segmentation
+ICCV2023
+
+https://arxiv.org/abs/2308.13853
+
+https://github.com/toggle1995/RIS-DMMI
+

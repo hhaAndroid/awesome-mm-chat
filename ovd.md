@@ -272,3 +272,14 @@ GLv2 优雅地将 localization 预训练和三个视觉语言预训练 (VLP) 任
 目标检测部分和 GLIP 是一样的，实例分割部分会单独加一个实例分割head。
 
 由于没有任何开源代码，估计也不会开源，因此了解下核心思想就行。可以看出其实也不是真正的大一统，大一统应该是类似 OFA 或者 VisionLLM 或者 X-Decoder 一样。
+
+# SAS-Det
+https://arxiv.org/abs/2308.06412  
+Improving Pseudo Labels for Open-Vocabulary Object Detection
+
+# OVDEval
+
+对 OVD 进行评估  
+https://github.com/om-ai-lab/OVDEval  
+https://arxiv.org/pdf/2308.13177.pdf  
+

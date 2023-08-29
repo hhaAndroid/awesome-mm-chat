@@ -231,3 +231,10 @@ https://github.com/UX-Decoder/Semantic-SAM
 
 X-Decoder OpenSeeD SEEM 作者，已经开源代码，并且复现了 SAM。
 
+# SAM-PARSER
+
+https://arxiv.org/pdf/2308.14604.pdf
+
+SAM-PARSER: Fine-tuning SAM Efficiently by Parameter Space Reconstruction
+
+
