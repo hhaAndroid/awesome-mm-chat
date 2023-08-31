@@ -78,15 +78,15 @@ PixelBERT 图示如下
 # Towards Open Vocabulary Learning: A Survey
 https://arxiv.org/abs/2306.15880
 
-# OWL-ViT
-
-Simple Open-Vocabulary Object Detection with Vision Transformers
-https://arxiv.org/abs/2205.06230
-https://huggingface.co/docs/transformers/model_doc/owlvit#overview
-
 # OWL-ST
 
 Scaling Open-Vocabulary Object Detection
+
+# MDETR
+
+图文预训练+下游 fintune
+
+
 
 # GLIP 解读
 
@@ -96,6 +96,7 @@ Scaling Open-Vocabulary Object Detection
 Fork 并注释版本： https://github.com/hhaAndroid/GLIP/tree/hha   
 
 由于考虑在 MMDet 中支持，因此解读以 MMDet 中的为准。
+
 ## 任务说明
 
 何谓 Grounding? 实际上就是定位的含义。Grounding 目标检测任务为：给定图片和文本，预测出文本中提到的物体的 bbox 和类别，只不过这个类别是开放的。
@@ -243,6 +244,22 @@ image_list = image_list.to(self.device)
 
 mmdet dev-3.x 已经实现了 GLIP 推理和评估。可以直接查看代码，比看本文容易些。
 
+# OWL-ViT
+
+重点  
+Simple Open-Vocabulary Object Detection with Vision Transformers
+https://arxiv.org/abs/2205.06230
+https://huggingface.co/docs/transformers/model_doc/owlvit#overview
+
+因为图片和文本特征没有进行早期交互，因此可以实现 one-shot detection
+
+# DetCLIP
+
+完全没法 follow
+
+# Grounding DINO
+
+
 # GLIP v2
 
 论文： GLIPv2: Unifying Localization and Vision-Language Understanding
@@ -272,6 +289,11 @@ GLv2 优雅地将 localization 预训练和三个视觉语言预训练 (VLP) 任
 目标检测部分和 GLIP 是一样的，实例分割部分会单独加一个实例分割head。
 
 由于没有任何开源代码，估计也不会开源，因此了解下核心思想就行。可以看出其实也不是真正的大一统，大一统应该是类似 OFA 或者 VisionLLM 或者 X-Decoder 一样。
+
+# DetCLIP2
+
+DetCLIPv2: Scalable Open-Vocabulary Object Detection Pre-training via Word-Region Alignment
+
 
 # SAS-Det
 https://arxiv.org/abs/2308.06412  

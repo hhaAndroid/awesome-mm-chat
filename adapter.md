@@ -6,7 +6,6 @@ ICLR2023
 
 https://github.com/czczup/ViT-Adapter
 
-
 # Polyhistor
 
 https://proceedings.neurips.cc/paper_files/paper/2022/file/efb02f96766a3b599c76852abf4d42dd-Supplemental-Conference.pdf
@@ -36,7 +35,6 @@ https://arxiv.org/abs/2307.15362
 cvpr2023
 
 https://arxiv.org/abs/2304.00779
-
 
 # UniPT
 

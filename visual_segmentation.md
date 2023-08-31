@@ -746,6 +746,8 @@ GRES: Generalized Referring Expression Segmentation
 https://github.com/henghuiding/ReLA
 
 https://github.com/MarkMoHR/Awesome-Referring-Image-Segmentation
+https://arxiv.org/abs/2308.16182
+
 
 ## RAM
 

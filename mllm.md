@@ -683,3 +683,9 @@ https://arxiv.org/abs/2308.01907
 
 https://zhuanlan.zhihu.com/p/639822513
 
+# AnomalyGPT
+
+AnomalyGPT: Detecting Industrial Anomalies using Large Vision-Language Models
+
+https://arxiv.org/pdf/2308.15366.pdf
+
