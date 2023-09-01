@@ -61,3 +61,12 @@ ICCV2023
 
 https://arxiv.org/pdf/2308.14286.pdf
 
+# Unified Open-Vocabulary Dense Visual Prediction
+
+https://arxiv.org/pdf/2307.08238.pdf
+
+没有开源
+
+解决不同源数据的开放训练问题，采用了 DA 策略，基于mask2former。
+
+

@@ -54,10 +54,6 @@ CVPR2019
 
 https://github.com/frank-xwang/towards-universal-object-detection
 
-# Detection Hub
-
-Detection Hub: Unifying Object Detection Datasets via Query Adaptation on Language Embedding
-
 # UniDet
 
 CVPR2022
@@ -135,6 +131,13 @@ https://github.com/prannaykaul/mm-ovod
 
 已开源
 
+# Detection Hub
+
+CVPR2023 
+
+Detection Hub: Unifying Object Detection Datasets via Query Adaptation on Language Embedding
+
+没开源
 
 # UniDetector-重点
 
@@ -325,17 +328,16 @@ soft loss 是作为一种正则，计算对应类别的 cosine similarity 和前
 
 测试时候是将视觉特征和所有类别的文本特征计算相似度，取最大的作为预测类别。
 
-# Cross-dataset Training for Class Increasing Object Detection
-
-https://arxiv.org/pdf/2001.04621.pdf
-
 # Towards a category-extended object detector without relabeling or conflicts
 
 # OmDet: Language-Aware Object Detection with Large-scale Vision-Language Multi-dataset Pre-training
 
+暂时代码没有开
+
 # Language-aware Multiple Datasets Detection Pretraining for DETRs
 
 https://arxiv.org/pdf/2304.03580.pdf
+
 
 # Multi-Task Heterogeneous Training
 
@@ -373,3 +375,6 @@ https://arxiv.org/abs/2111.12993
 https://arxiv.org/pdf/2307.15362.pdf
 
 
+# Cross-dataset Training for Class Increasing Object Detection
+
+https://arxiv.org/pdf/2001.04621.pdf

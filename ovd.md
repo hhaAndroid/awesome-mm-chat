@@ -82,13 +82,16 @@ https://arxiv.org/abs/2306.15880
 
 Scaling Open-Vocabulary Object Detection
 
-# MDETR
+# MDETR-重点
 
-图文预训练+下游 fintune
+MDETR - Modulated Detection for End-to-End Multi-Modal Understanding  
+
+图文预训练+下游 funtune
+
+MDETR 需要对标签进行一些前处理，并且也没有做 zero-shot 相关的，都是需要 funtune。但是他做了很多任务，虽然每个下游任务都需要简单的 funtune，而且是 DETR系列。
 
 
-
-# GLIP 解读
+# GLIP-重点
 
 论文题目： GLIP: Grounded Language-Image Pre-training  
 论文地址： https://arxiv.org/abs/2112.03857   
@@ -113,6 +116,12 @@ Fork 并注释版本： https://github.com/hhaAndroid/GLIP/tree/hha
 实际上为了方便且合理，在 COCO 目标检测任务上是输入类别序列，通过 . 拼接而成。注意： `这个符号不能随便换，因为要和训练保持一致`。
 
 我们不会过多的关注于训练过程，因为也没有多少能成功复现。
+
+Phrase grounding： 输入句子和图片，将句子中提到的物体都框出来。定位任务与图像检测任务非常类似，都是去图中找目标物体的位置。对于给定的 sentence，要定位其中提到的全部物体（phrase）
+Referring Expression Comprehension（REC）： 每个语言描述（这里是 expression）只指示一个物体，每句话即使有上下文物体，也只对应一个指示物体的 box 标注
+Visual grounding： 是包括这两个任务？ 感觉好像现在指的其实就是 REC。论文里面描述是 Visual Grounding (VG) aims to locate the most relevant object or region in an image, based on a natural language query
+
+
 
 ## 模型说明
 
@@ -259,6 +268,7 @@ https://huggingface.co/docs/transformers/model_doc/owlvit#overview
 
 # Grounding DINO
 
+如何可以做 REC? 应该任务不一样吧，需要确认。
 
 # GLIP v2
 
@@ -294,6 +304,49 @@ GLv2 优雅地将 localization 预训练和三个视觉语言预训练 (VLP) 任
 
 DetCLIPv2: Scalable Open-Vocabulary Object Detection Pre-training via Word-Region Alignment
 
+# MQ-Det-开源
+
+MQ-Det: Multi-modal Queried Object Detection in the Wild
+
+https://github.com/YifanXu74/MQ-Det
+
+这是一个 few-shot 方法吗？ 没有做过 few-shot，不清楚这个算法推理时候是咋运行的，一定要提供 visual query 吗？ 那是不是会麻烦点？
+
+# ViTMDETR
+
+CVPR2023
+
+Dynamic Inference with Grounding Based Vision and Language Models 
+https://openaccess.thecvf.com/content/CVPR2023/papers/Uzkent_Dynamic_Inference_With_Grounding_Based_Vision_and_Language_Models_CVPR_2023_paper.pdf  
+
+好像是一个加速推理的工作？ 没有开源。
+
+# CapDet
+
+CVPR2023  
+
+CapDet: Unifying Dense Captioning and Open-World Detection Pretraining  
+
+和 GLIP 比较贴合，没有开源。推理时候也要给类别的详细描述，感觉有点麻烦。要是推理时候能够支持只输入类名，或者输入类名+详细描述，那就更好了。
+
+# FIBER-重点
+
+Coarse-to-Fine Vision-Language Pre-training with Fusion in the Backbone
+
+https://github.com/microsoft/FIBER
+开源很全面。
+
+
+# DQ-DETR
+
+图画的不错。不过这个任务不是很感兴趣。
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/dcf3f151-dfff-4578-8e23-15cc43cc7bc6"/>
+</div>
+
+DQ-DETR: Dual Query Detection Transformer for  Phrase Extraction and Grounding
+https://arxiv.org/pdf/2211.15516v2.pdf
 
 # SAS-Det
 https://arxiv.org/abs/2308.06412  
@@ -304,4 +357,9 @@ Improving Pseudo Labels for Open-Vocabulary Object Detection
 对 OVD 进行评估  
 https://github.com/om-ai-lab/OVDEval  
 https://arxiv.org/pdf/2308.13177.pdf  
+
+# MMC-Det
+
+https://arxiv.org/pdf/2308.15846.pdf 
+Exploring Multi-Modal Contextual Knowledge for Open-Vocabulary Object Detection
 
