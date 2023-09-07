@@ -872,3 +872,9 @@ https://arxiv.org/abs/2308.13853
 
 https://github.com/toggle1995/RIS-DMMI
 
+# DeMTG
+
+Deformable Mixer Transformer with Gating for Multi-Task Learning of Dense Prediction  
+https://arxiv.org/abs/2308.05721  
+https://github.com/yangyangxu0/DeMTG
+

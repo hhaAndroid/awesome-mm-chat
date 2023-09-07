@@ -75,3 +75,16 @@ https://arxiv.org/pdf/2307.08238.pdf
 https://arxiv.org/pdf/2309.00227.pdf  360 研究院 KDD workshop 2023
 What Makes Good Open-Vocabulary Detector: A  Disassembling Perspective
 
+# IoU-Aware Calibration
+
+Do We Still Need Non-Maximum Suppression? Accurate Confidence Estimates
+and Implicit Duplication Modeling with IoU-Aware Calibration
+
+https://arxiv.org/pdf/2309.03110.pdf
+
+# DAT++
+
+DAT++: Spatially Dynamic Vision Transformer  with Deformable Attention
+
+https://arxiv.org/pdf/2309.01430.pdf
+

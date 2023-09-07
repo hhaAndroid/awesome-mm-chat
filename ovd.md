@@ -363,3 +363,35 @@ https://arxiv.org/pdf/2308.13177.pdf
 https://arxiv.org/pdf/2308.15846.pdf 
 Exploring Multi-Modal Contextual Knowledge for Open-Vocabulary Object Detection
 
+# Open Vocabulary Semantic Segmenter
+https://arxiv.org/pdf/2309.02773.pdf 
+
+Diffusion Model is Secretly a Training-free Open Vocabulary Semantic Segmenter 
+
+#  Phrase Grounding
+
+A Joint Study of Phrase Grounding and Task Performance
+in Vision and Language Models
+
+https://arxiv.org/pdf/2309.02691.pdf
+
+# EdaDet
+
+iccv2023 
+
+EdaDet: Open-Vocabulary Object Detection Using Early Dense Alignment
+
+https://arxiv.org/pdf/2309.01151.pdf
+
+# ZERO-SHOT VISUAL GROUNDERS
+
+VGDIFFZERO: TEXT-TO-IMAGE DIFFUSION MODELS CAN BE ZERO-SHOT VISUAL GROUNDERS
+https://arxiv.org/pdf/2309.01141.pdf
+
+# Open-Vocabulary Vision Transformer
+Contrastive Feature Masking Open-Vocabulary Vision Transformer  
+
+https://arxiv.org/pdf/2309.00775.pdf
+
+# SLIME: SEGMENT LIKE ME
+https://arxiv.org/pdf/2309.03179.pdf 
