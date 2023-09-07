@@ -70,3 +70,8 @@ https://arxiv.org/pdf/2307.08238.pdf
 解决不同源数据的开放训练问题，采用了 DA 策略，基于mask2former。
 
 
+# DRR
+
+https://arxiv.org/pdf/2309.00227.pdf  360 研究院 KDD workshop 2023
+What Makes Good Open-Vocabulary Detector: A  Disassembling Perspective
+

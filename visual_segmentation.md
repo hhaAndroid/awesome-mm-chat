@@ -511,6 +511,8 @@ query 分成了 2 组： 前景 query 和背景 query。背景 query 用于预�
 
 代码是基于 mask dino 和 x-decoder 构建。
 
+有 obj365 的训练配置，但是没有写如何组织数据。
+
 ### 代码分析
 
 代码是在  x-decoder 上面构建的。模型结构和 mask2former 类似
