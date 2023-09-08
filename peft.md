@@ -662,3 +662,8 @@ class AdaptedAttention(nn.Module):
 LLaMA-Adapter V2: Parameter-Efficient Visual Instruction Model
 
 重点对 LLaMA-Adapter 中的 图文多模态模型进行更新。
+
+# Distribution-Aware Prompt Tuning for Vision-Language Models
+
+https://arxiv.org/pdf/2309.03406.pdf
+

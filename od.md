@@ -69,7 +69,6 @@ https://arxiv.org/pdf/2307.08238.pdf
 
 解决不同源数据的开放训练问题，采用了 DA 策略，基于mask2former。
 
-
 # DRR
 
 https://arxiv.org/pdf/2309.00227.pdf  360 研究院 KDD workshop 2023
@@ -84,7 +83,25 @@ https://arxiv.org/pdf/2309.03110.pdf
 
 # DAT++
 
-DAT++: Spatially Dynamic Vision Transformer  with Deformable Attention
+DAT++: Spatially Dynamic Vision Transformer with Deformable Attention
 
 https://arxiv.org/pdf/2309.01430.pdf
+https://github.com/LeapLabTHU/DAT
+
+看起来很强，但是为何没有 DINO 的结果？
+
+# DiffusionEngine
+
+DiffusionEngine: Diffusion Model is Scalable Data Engine for Object Detection
+
+https://arxiv.org/pdf/2309.03893.pdf
+https://github.com/bytedance/DiffusionEngine
+
+1. Diffusion 模块可以直接作为 backbone，实现目标检测功能，效果还不错，如果这条路可行？那么应该有不少可以优化的，不知道推理成本多大？
+2. 同时 Diffusion 还可以用于生成数据，同时输出检测框，从而 scale up 数据集。作者基于这个原则采用 coco train2017 数据集生成了 COCO-DE 数据集，然后联合训练，在 DINO 上可以提升 3 个点
+
+算是把 Diffusion 的优势都发挥出来了，不仅仅是做检测任务，而且可以无缝生成数据。
+
+疑问：baseline 训练都是 6x 的，有点久？
+疑问：基于 coco 2017 训练的数据看起来和原始图片其实非常类似，所以这个扩充其实只是相当于训练图片的简单扩展，多样性好像不多？如果数据集很小，扩展后依然差不多吧，效果有多明显？
 

@@ -56,3 +56,12 @@ EVA 还是太大了，作者觉得应该可以充分压榨下性能。因此提�
 
 需要更强的 CLIP 模型作为 teacher，并且要加入更多的训练 epoch 会更好。
 
+# InstructDiffusion
+
+InstructDiffusion: A Generalist Modeling Interface for Vision Tasks  
+https://arxiv.org/pdf/2309.03895.pdf
+https://github.com/cientgu/InstructDiffusion 
+微软
+
+
+

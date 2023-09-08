@@ -368,12 +368,7 @@ https://arxiv.org/pdf/2309.02773.pdf
 
 Diffusion Model is Secretly a Training-free Open Vocabulary Semantic Segmenter 
 
-#  Phrase Grounding
-
-A Joint Study of Phrase Grounding and Task Performance
-in Vision and Language Models
-
-https://arxiv.org/pdf/2309.02691.pdf
+无需训练。
 
 # EdaDet
 
