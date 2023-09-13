@@ -4,7 +4,7 @@ Parameter-Efficient Fine-Tuning
 
 官方地址： https://github.com/huggingface/peft  
 官方文档：https://huggingface.co/docs/peft/index
-fork 并注释版本: https://github.com/hhaAndroid/peft/tree/hha
+fork 并注释版本: https://github.com/hhaAndroid/peft/tree/hha1
 
 这个库现在代码量很少，没有几个 py 文件，阅读起来比较容易。examples 里面也有很多可以直接跑的案例
 
@@ -279,7 +279,7 @@ outputs = model.generate(input_ids=inputs)
 print(tokenizer.decode(outputs[0]))  # <pad> I love you.</s>
 ```
 
-具体见 https://github.com/hhaAndroid/peft/tree/hha
+具体见 https://github.com/hhaAndroid/peft/tree/hha1
 
 ## Prefix tuning 
 
