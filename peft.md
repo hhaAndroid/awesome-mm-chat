@@ -667,3 +667,11 @@ LLaMA-Adapter V2: Parameter-Efficient Visual Instruction Model
 
 https://arxiv.org/pdf/2309.03406.pdf
 
+# Dynamic Visual Prompt Tuning
+
+Dynamic Visual Prompt Tuning for Parameter Efficient Transfer Learning
+
+https://arxiv.org/pdf/2309.06123.pdf
+
+为啥验证实验都是只有分类这一个任务？
+

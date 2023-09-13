@@ -90,6 +90,16 @@ https://github.com/LeapLabTHU/DAT
 
 看起来很强，但是为何没有 DINO 的结果？
 
+# Beyond Generation
+
+Beyond Generation: Harnessing Text to Image Models for Object Detection and Segmentation
+
+和下面一文做的事情类似。
+
+https://arxiv.org/pdf/2309.05956.pdf
+
+https://github.com/gyhandy/Text2Image-for-Detection
+
 # DiffusionEngine
 
 DiffusionEngine: Diffusion Model is Scalable Data Engine for Object Detection

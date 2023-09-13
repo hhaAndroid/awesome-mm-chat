@@ -864,7 +864,6 @@ ICCV2023
 https://arxiv.org/pdf/2308.15512.pdf
 
 
-
 # Beyond One-to-One: Rethinking the Referring Image Segmentation
 ICCV2023
 
