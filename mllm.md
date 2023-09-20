@@ -543,6 +543,284 @@ In both stages, we freeze the visual encoder and tune all parameters in LLM. All
 
 # LLaVA
 
+Visual Instruction Tuning
+
+将 llm 模型转换为 mllm 的核心在于：
+
+1. 构造数据
+2. 模型架构设计
+
+## GPT-assisted Visual Instruction Data Generation
+
+X_v 视觉图片
+X_c 图片对应的描述
+X_q 对应的问题
+
+image-text pair to its instruction-following 格式： `Human : Xq Xv<STOP>\n Assistant : Xc<STOP>\n.`
+
+上述就是 llava 的对话格式，用户输入一张图片和一个问题，模型输出对应的描述或者答案。现在希望构造训练样本。
+
+因为 GPT4 不是一个多模态模型，因此我们构造数据时候是不会输入 Xv的。
+
+因为 COCO 数据标注是比较全面的，有图片描述和 GT bbox,因此作者的做法是基于 COCO 标注，先手动构建一些样本，然后以 few-shot 方式让 GPT4 生成更多的样本。
+
+具体来说，如下所示：
+
+<div align=center>
+<img src="https://github.com/haotian-liu/LLaVA/assets/17425982/cda4f4c8-0bda-464a-82d2-0d2e19e36cf5"/>
+</div>
+
+上述是 gpt4 的两种输入上下文，包括每张图片的 5 条图片描述，和 GT bbox 的位置信息。注意 COCO 并没有每条描述对应的 bbox 这个标注，但是 refcoco 里面有。
+
+GPT4 应该输出 3 种类型的答案，这样模型才能够具备很多功能。
+
+<div align=center>
+<img src="https://github.com/haotian-liu/LLaVA/assets/17425982/61b8d209-74e2-4d81-bc69-3a03544a63ea"/>
+</div>
+
+具体来说是对话、详细描述和复杂推理。
+
+完整输入给 GPT4 的 prompt 如下所示:
+
+<div align=center>
+<img src="https://github.com/haotian-liu/LLaVA/assets/17425982/ac2adc94-be6b-4182-8fe6-9b8a2e981296"/>
+</div>
+
+从上图可以看出所有内容。但是论文好像没有写到底是几 show？
+
+注意不同的输出要求，对应的输入 sys_prompt 是不一样的。
+
+**(1) 对话**
+可以直接看代码里面的 `playground/data/prompts/conversation`
+
+000_caps.txt 是 few-shot 中的其中一个  sample['context'] 即模型样例输入
+000_conv.txt 是 few-shot 中的其中一个 sample['response'] 即模型样例输出
+
+000_caps.txt其实就是 COCO 某一张图片的 5条描述，而 000_conv.txt 是人工构造的对话，其中包括了问题和答案。
+
+```text
+ {
+    "id": "000000033471",
+    "image": "000000033471.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "What are the colors of the bus in the image?\n<image>"
+      },
+      {
+        "from": "gpt",
+        "value": "The bus in the image is white and red."
+      },
+      {
+        "from": "human",
+        "value": "What feature can be seen on the back of the bus?"
+      },
+      {
+        "from": "gpt",
+        "value": "The back of the bus features an advertisement."
+      },
+      {
+        "from": "human",
+        "value": "Is the bus driving down the street or pulled off to the side?"
+      },
+      {
+        "from": "gpt",
+        "value": "The bus is driving down the street, which is crowded with people and other vehicles."
+      }
+    ]
+  },
+```
+
+看样子训练数据是多轮对话？ 多轮对话训练时候和单轮是一样的，将多个对话拼成一个长对话就行，中间插入分割符。human 和 gpt 这种字符串也是要输入给模型的，只有回答部分有 loss，其余地方不计算 loss。
+
+**(2) 详细描述**
+
+可以直接看代码里面的 `playground/data/prompts/detail_description`
+
+000_caps.txt 内部包括 COCO 某一张图片的 5 条描述和对应的 gt bbox 坐标信息，000_conv.txt 是人工构造的详细描述，有些样本是 2 条描述，有些是 3 条。
+
+```text
+  {
+    "id": "000000442786",
+    "image": "000000442786.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "What do you see happening in this image?\n<image>"
+      },
+      {
+        "from": "gpt",
+        "value": "The scene depicts a lively plaza area with several people walking and enjoying their time. A man is standing in the plaza with his legs crossed, holding a kite in his hand. The kite has multiple sections attached to it, spread out in various directions as if ready for flight.\n\nNumerous people are scattered throughout the plaza, walking and interacting with others. Some of these individuals are carrying handbags, and others have backpacks. The image captures the casual, social atmosphere of a bustling plaza on a nice day."
+      }
+    ]
+  },
+  {
+    "id": "000000539056",
+    "image": "000000539056.jpg",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "What do you think is going on in this snapshot?\n<image>"
+      },
+      {
+        "from": "gpt",
+        "value": "The image displays a tidy home office desk setting with a laptop placed in the center. On the desk, there is a cordless keyboard in front of the laptop and a wireless mouse situated slightly to the right of it. A cell phone can be seen on the left side of the desk, close to the laptop.\n\nNear the top left corner, there is a coke glass adding a personal touch to the workspace. A collection of books is scattered around the scene in various positions and stacks, possibly serving as reference material or leisure reading for the desk's occupant."
+      }
+    ]
+  },
+```   
+
+**(3)复杂推理**
+
+可以直接看代码里面的 `playground/data/prompts/complex_reasoning`
+
+000_caps.txt 内部包括 COCO 某一张图片的 5 条描述和对应的 gt bbox 坐标信息，和详细描述的输入是完全一样的，000_conv.txt 是人工构造的问答，一般是一个问题，一个非常详细的推理回答。
+
+
+总共收集了 158K 个独特的语言图像指令跟踪样本，包括对话中的 58K、详细描述中的 23K 和复杂推理中的 77k
+
+## 模型结构
+
+<div align=center>
+<img src="https://github.com/haotian-liu/LLaVA/assets/17425982/189cf1e9-6e56-40e9-b7d7-7c2010e56b26"/>
+</div>
+
+llm 选择的是 llama，视觉分支选择的是 CLIP 的视觉分支，并引入一个投影层将视觉特征投影到语言空间。
+
+简单的投影方案是轻量级且具有成本效益的，这使我们能够快速迭代以数据为中心的实验。还可以考虑更复杂的（但昂贵的）方案来连接图像和语言表示，例如 BLIP-2 [25] 中的 Flamingo [2] 和 Q-former 中的门控交叉注意力，或其他提供对象级特征的 SAM。我们将为 LlaVA 探索可能更有效和复杂的架构设计留作未来的工作。
+
+输入给 llm 的序列信息如下所示：
+
+<div align=center>
+<img src="https://github.com/haotian-liu/LLaVA/assets/17425982/d74ee873-83e3-4fae-bd16-59553843a893"/>
+</div>
+
+- Xsystem-message = A chat between a curious human and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the human's questions. 
+- <STOP> = ###.
+- Xinstruct 就是用户输入的一个图片token 和问题
+
+该模型经过训练以预测 assistant 的答案以及停止符(这样才能知道在哪里停止回复)，因此仅使用绿色序列/标记来计算自回归模型中的损失。Human 和 Assistant 都需要编码为 token，输入到模型中，这样才有强的指令跟随能力，并且不会破坏原先预训练本身的能力。
+
+## 训练
+
+如果有多轮对话，会构造为一个长序列，将所有的 assistant 回答都当做响应进行训练，不过在训练时候，有如下简单设置
+
+<div align=center>
+<img src="https://github.com/haotian-liu/LLaVA/assets/17425982/4f27331e-687a-49ee-836d-5d5d40ffddfd"/>
+</div>
+
+第 1 轮构造时候，可以随机将图片或者问题在前面。
+
+训练包括两个阶段：
+
+**1. 预训练进行图文对齐**
+
+为了在知识覆盖率和训练效率之间取得平衡，我们将 CC3M 过滤为 595K 图像-文本对。并转换为指令跟随的格式，可以视为单轮对话训练。
+
+过滤过程为:
+
+1. 使用 Spacy 提取整个 cc3m 数据集上的每个标题的名词，并计算每个唯一名词短语的频率。我们跳过频率小于 3 的名词短语，因为它们通常是其他字幕已经涵盖的稀有组合概念和属性。
+2. 从剩余频率最低的名词短语开始，将包含该名词短语的标题添加到候选池中。如果名词短语的频率大于 100，我们会在其所有字幕中随机选择大小为 100 的子集。
+
+最终剩下大约 595K 图像-文本对。这样即可以保留更多的常用概念，又可能减少一些数据。
+
+这个数据转指令跟随的过程非常简单，并不需要前面说的那么复杂。
+
+<div align=center>
+<img src="https://github.com/haotian-liu/LLaVA/assets/17425982/384dd04d-64a7-460a-96ff-c4858d988f1a"/>
+</div>
+
+其中 human 的输入是提前写好的几条 prompt，然后在数据集制作时候随机选择其中一条，构成的数据集。
+
+```text
+• "Describe the image concisely." 
+• "Provide a brief description of the given image." 
+• "Offer a succinct explanation of the picture presented."
+...
+```
+
+在训练过程中，只训练那个投影矩阵，其他全部固定。
+
+4 hours for LLaVA-13B on 8x A100 (80G). It takes around 2 hours for 7B checkpoints. LLaVA-13B, 1x A100 (80G). Time: ~33 hours.
+
+**2. 微调**
+
+只保留视觉编码器的权重冻结，并继续更新LLAVA中投影层和LLM的预训练权重。
+
+微调时候也有两者场景，对应的是两套不同的数据集。
+
+1. 多轮对话机器人，这个微调用的是前面说的 158k 数据，用于实际应用场景
+2. Science QA，作者想验证模型在这个数据集上进行微调后的表现
+
+当最初发布论文时，我们在LLaVA-Instruct-158K数据集上使用了完整的3个 epoch 的训练计划。
+在我们后续的探索中，我们引入了LLaVA-Lightning，因为我们发现在 LLaVA-Instruct-80K 数据集上进行更快的1个时期（epoch）的训练计划可以实现快速收敛和良好的性能。
+
+LLaVA-Lightning can be trained on 8x A100 GPUs in just 3 hours, including both pretraining and finetuning
+
+对于 LLaVA Lightning，我们创建了两个经过精简的子集，以确保广泛的概念覆盖和训练的效率。此外，与论文中的3个时期（epoch）相比，我们仅对指令调整进行1个时期的训练。我们发现这样的训练计划是有效的，可以实现快速收敛和良好的性能。
+
+1. 对于预训练，我们创建了一个概念平衡的LAION-CC-SBU子集。它包含了558K张图片。在这里下载数据。
+2. 对于指令调整，我们创建了一个LLaVA-Instruct-150K的子集。它包含了80K个图片-指令对，其中包括40K个对话和40K个复杂推理数据，且图像没有重叠。在这里下载llava_instruct_80k.json文件。
+
+看起来数据集更少，估计指令更高，所以性能更好。
+
+
+## 评估
+
+(1) 多轮对话
+评估有两个方面，一个就是对一些典型案例进行效果展示，一个是定量评估。
+
+第一个评估就没有啥好说的了，第二个评估参考了 Vicuna 里面的利用 GPT4 打分的做法。
+
+1. 从 COCO 验证集中随机选择 30 张图像，并采用前面提到的数据生成过程生成三种类型的问题（对话、详细描述、复杂推理）
+2. LLAVA 根据问题和视觉输入图像预测答案
+3. GPT-4 基于问题和 GT Box、图像描述进行预测，这个答案作为模型上限
+4. 在从两个模型获得响应后，我们将问题、视觉信息（以字幕和边界框的格式）和两个助手生成的响应提供给 GPT-4。 GPT-4 评估来自助手的响应的有用性、相关性、准确性和级别，并在 1 到 10 的范围内给出总分，其中得分越高表示整体性能越好。GPT-4 还被要求提供对评估的全面解释，以便我们更好地理解模型。
+
+也就是说 GPT4 即作为数据生成着，作为教师，也作为评估者。
+
+<div align=center>
+<img src="https://github.com/haotian-liu/LLaVA/assets/17425982/1f80e913-21f3-4213-ada0-db62e93ac707"/>
+</div>
+
+1. 如果没有指令微调，那性能非常差
+2. 各类数据对性能都有影响
+
+(2) ScienceQA
+
+多模态科学问答数据集 ScienceQA  包含 21k 个多模态多项选择题，在 3 个大主题、26 个子主题、127 个类别和 379 个技能，具有丰富的域多样性。基准数据集分为训练、验证和测试拆分，分别有 12726、4241 和 4241 个示例。
+
+<div align=center>
+<img src="https://github.com/haotian-liu/LLaVA/assets/17425982/1f1b39ea-2352-431f-a318-11d00466aa01"/>
+</div>
+
+<div align=center>
+<img src="https://github.com/haotian-liu/LLaVA/assets/17425982/c3c3960c-8890-4722-bd00-a918b547328b"/>
+</div>
+
+这个数据集非常全面，模型回答时候要包括选项，还要给出选择的依据或者说背景知识，最后还要有一个详细解释。类似 COT。
+
+## 讨论
+
+(i) 数据规模。预训练数据仅限于 CC3M 的子集，微调数据是 COCO 的子集。我们认为在更大的图像文本数据上进行预训练以增加概念覆盖率（例如，实体和 OCR）将是值得的。将数据生成管道应用于更大的语言图像接地数据（例如，如 GLIP [26] 和 GLGEN [27] 中使用的）以生成更多指令跟踪数据以微调多模态聊天助手也将很有希望。
+(ii) 连接更多的视觉模型。我们有希望的结果表明在某些情况下，多模态 GPT-4 性能接近。除了试图通过数据/模型缩放来匹配其性能外，学术界将SAM[21]等其他强大的视觉模型连接到LLAVA可能更有趣，以实现多模态GPT-4目前可能无法配备的新能力
+
+## 结论
+
+本论文开源非常全面，而且一直在更新。
+
+# An Empirical Study of Scaling Instruction-Tuned Large Multimodal Models
+
+llava 后续
+
+https://arxiv.org/pdf/2309.09958.pdf
+
+最近，使用开源的大型多模态模型（如LLaVA和MiniGPT-4）进行视觉指令调整已经取得了令人鼓舞的进展。然而，大多数现有的开源多模态模型研究都是使用参数为13B或更小的模型进行的。
+在本文中，我们对LLaVA进行了扩展，达到了33B、65B/70B的规模，并分享了我们在图像分辨率、数据混合以及诸如LoRA/QLoRA等参数高效训练方法方面的研究发现。
+我们通过在真实世界任务中完成任务来评估这些方法对多模态和语言能力的影响。我们发现，扩展多模态模型能够始终提升模型性能并改善语言能力，
+而LoRA/QLoRA调整方法的性能与完整模型微调的性能相当。此外，研究强调了提高图像分辨率和混合多模态语言数据对提高多模态模型性能的重要性，
+而视觉指令调整有时可以改善多模态模型的纯语言能力。我们希望这项研究能够使更大规模的最先进多模态模型研究更加易于获取，从而为未来的研究奠定更强大的基准。
+
 # mPLUG-Owl
 
 # InstructBLIP
@@ -688,4 +966,8 @@ https://zhuanlan.zhihu.com/p/639822513
 AnomalyGPT: Detecting Industrial Anomalies using Large Vision-Language Models
 
 https://arxiv.org/pdf/2308.15366.pdf
+
+
+
+
 
