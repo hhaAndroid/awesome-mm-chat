@@ -1,5 +1,10 @@
 ## 6 TOKENIZERS 库
 
+https://huggingface.co/learn/nlp-course/chapter6/1?fw=pt
+https://zhuanlan.zhihu.com/p/657047389
+https://medium.com/@awaldeep/hugging-face-understanding-tokenizers-1b7e4afdb154
+https://colab.research.google.com/github/huggingface/notebooks/blob/master/examples/tokenizer_training.ipynb
+
 在第三章，我们研究了如何在给定任务上微调模型，但是我们可以发现 tokenizer 我们是直接使用的，没有进行训练，这会存在不足。因为使用在来自其他领域或语言的语料库上预训练的标记器通常不是最理想的。 例如，在英语语料库上训练的标记器在日语文本语料库上表现不佳，因为两种语言中空格和标点符号的使用非常不同。
 假设我们要微调的语言不太一样，那么我们就需要重新训练 tokenizer，这就是 TOKENIZERS 库的作用。它是一个用于训练和使用自定义分词器的库，它可以让我们轻松地训练自己的分词器，然后将其与 Hugging Face 的 Transformer 库一起使用。
 
@@ -98,8 +103,3 @@ model.resize_token_embeddings(len(tokenizer))
 ```
 
 `resize_token_embeddings` 的过程非常暴力，就是直接 copy+剩下的随机初始化。
-
-### 2 
-
-慢速分词器是在 🤗 Transformers 库中用 Python 编写的，而快速版本是由 🤗 分词器提供的，它们是用 Rust 编写的。
-

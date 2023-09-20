@@ -967,7 +967,43 @@ AnomalyGPT: Detecting Industrial Anomalies using Large Vision-Language Models
 
 https://arxiv.org/pdf/2308.15366.pdf
 
+# QWEN-VL
 
+Qwen-VL: A Versatile Vision-Language Model for Understanding, Localization, Text Reading, and Beyond
+
+https://github.com/QwenLM/Qwen-VL
+
+能力看起来很强，多边形战士。
+
+<div align=center>
+<img src="https://github.com/QwenLM/Qwen-7B/assets/17425982/2615c777-84a7-4a27-8ab7-bfd698d833e8"/>
+</div>
+
+支持 bbox 输入和 bbox 输出。
+
+<div align=center>
+<img src="https://github.com/QwenLM/Qwen-7B/assets/17425982/65c3f4f5-34ea-4b2e-b783-40ba143ef3f5"/>
+</div>
+
+1. Qwen-VL 是一个预训练模型，它通过视觉编码器的连接扩展了具有视觉能力的 Qwen-7B (Qwen, 2023) 语言模型。在三阶段训练后，Qwen-VL 具有感知和理解多级尺度的视觉信号的能力。
+2. Qwen-VL-Chat 是一个基于 Qwen-VL 的交互视觉语言模型，使用对齐机制并支持更灵活的交互，例如多个图像输入、多轮对话和定位能力
+
+可以通过这个案例学习如何将一个 llm 模型变成 mllm。
+
+<div align=center>
+<img src="https://github.com/QwenLM/Qwen-7B/assets/17425982/dc8dbfee-8e54-4311-8685-5102f1f333e3"/>
+</div>
+
+**(1) 大语言模型**
+该模型使用来自 Qwen-7B 的预训练权重初始化
+
+**(2) 视觉编码器**
+使用 Openclip 的 ViT-bigG ，并且要加载预训练权重。
+
+在训练和推理过程中，输入图像都被调整为特定的分辨率。视觉编码器通过将图像分割成步长为14的patch来处理图像，生成一组图像特征。
+
+**(3) Position-aware Vision-Language Adapter**
+这个地方做法和 llava 等做法不太一样。
 
 
 

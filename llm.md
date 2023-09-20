@@ -278,3 +278,8 @@ python -m fastchat.serve.cli --model-path /home/huanghaian/vicuna-7b --device cp
 </div>
 
 后续会更新 vicuna 的一些关键代码注释，以及一些使用经验。
+
+# Qwen-7B
+
+https://github.com/QwenLM/Qwen-7B/
+
