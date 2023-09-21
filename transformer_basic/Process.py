@@ -76,11 +76,10 @@ def create_dataset(opt, SRC, TRG):
 
         try:
             os.mkdir("weights")
+            pickle.dump(SRC, open('weights/SRC.pkl', 'wb'))
+            pickle.dump(TRG, open('weights/TRG.pkl', 'wb'))
         except:
-            print("weights folder already exists, run program with -load_weights weights to load them")
-            quit()
-        pickle.dump(SRC, open('weights/SRC.pkl', 'wb'))
-        pickle.dump(TRG, open('weights/TRG.pkl', 'wb'))
+            print("weights folder already exists")
 
     opt.src_pad = SRC.vocab.stoi['<pad>']
     opt.trg_pad = TRG.vocab.stoi['<pad>']

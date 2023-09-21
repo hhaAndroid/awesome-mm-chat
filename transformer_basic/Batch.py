@@ -34,7 +34,8 @@ class MyIterator(data.Iterator):
                     p_batch = data.batch(
                         sorted(p, key=self.sort_key),
                         self.batch_size, self.batch_size_fn)
-                    for b in random_shuffler(list(p_batch)):
+                    x = list(p_batch)
+                    for b in random_shuffler(x):
                         yield b
 
             self.batches = pool(self.data(), self.random_shuffler)

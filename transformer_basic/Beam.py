@@ -9,6 +9,7 @@ def init_vars(src, model, SRC, TRG, opt):
     src_mask = (src != SRC.vocab.stoi['<pad>']).unsqueeze(-2)
     e_output = model.encoder(src, src_mask)
 
+    # 以开始符为起点
     outputs = torch.tensor([[init_tok]], device=opt.device, dtype=torch.long)
 
     trg_mask = nopeak_mask(1, opt)
@@ -17,6 +18,7 @@ def init_vars(src, model, SRC, TRG, opt):
                                   e_output, src_mask, trg_mask))
     out = F.softmax(out, dim=-1)
 
+    # bean search
     probs, ix = out[:, -1].data.topk(opt.k)
     log_scores = torch.Tensor([math.log(prob) for prob in probs.data[0]]).unsqueeze(0)
 
@@ -69,11 +71,14 @@ def beam_search(src, model, SRC, TRG, opt):
             if sentence_lengths[i] == 0:  # First end symbol has not been found yet
                 sentence_lengths[i] = vec[1]  # Position of first end symbol
 
+        # 已经解码结束的句子个数
         num_finished_sentences = len([s for s in sentence_lengths if s > 0])
 
+        # 如果已经完全解码结束，则跳出循环
         if num_finished_sentences == opt.k:
             alpha = 0.7
             div = 1 / (sentence_lengths.type_as(log_scores) ** alpha)
+            # 都乘上一个常数的意义是啥？
             _, ind = torch.max(log_scores * div, 1)
             ind = ind.data[0]
             break

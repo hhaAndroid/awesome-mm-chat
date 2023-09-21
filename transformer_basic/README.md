@@ -8,6 +8,12 @@
 ## 说明
 本文件夹提供了一个英文翻译为法语的最小实践案例。基于 https://github.com/SamLynnEvans/Transformer，将其升级为新版torch，并进行了一些修改和注释
 
+具体功能：
+
+1. Transformer 的最小实现,非常简单
+2. 从头训练一个英法翻译模型，数据集已经在 data 路径下，无需再下载
+3. 包括 beam search 解码过程
+
 ## 依赖安装
 以 pytorch 1.8.1 为例，假设已经安装好了
 

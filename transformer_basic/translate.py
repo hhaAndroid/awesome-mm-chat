@@ -47,7 +47,7 @@ def translate_sentence(sentence, model, opt, SRC, TRG):
     indexed = []
     sentence = SRC.preprocess(sentence)
     for tok in sentence:
-        if SRC.vocab.stoi[tok] != 0 or opt.floyd is True:
+        if SRC.vocab.stoi[tok] != 0:
             indexed.append(SRC.vocab.stoi[tok])
         else:
             indexed.append(get_synonym(tok, SRC))
