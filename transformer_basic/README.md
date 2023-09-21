@@ -36,3 +36,7 @@ python train.py -src_data data/english.txt -trg_data data/french.txt -src_lang e
 python translate.py -load_weights weights/ -src_lang en_core_web_sm -trg_lang fr_core_news_sm
 ```
 
+
+# 缺点
+
+虽然本文代码非常简单，但是现在主流还是使用的 HuggingFace 的 Transformers 库，因此在理解具体原理后需要继续学习 Transformers 库，具体见 transformer_advanc 文件夹
