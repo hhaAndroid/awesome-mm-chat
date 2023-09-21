@@ -501,6 +501,10 @@ referring expression generation 用于给定图片和区域，对该区域进行
 
 模型应该应该是直接输出 bbox 坐标 <box> <loc68> <loc425> </box>。
 
+# KOSMOS-2.5: A Multimodal Literate Model
+
+https://arxiv.org/pdf/2309.11419.pdf
+
 # Shikra
 
 Shikra: Unleashing Multimodal LLM's Referential Dialogue Magic 解锁多模态语言模型参考对话的魔法  
