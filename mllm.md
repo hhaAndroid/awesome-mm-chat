@@ -1010,4 +1010,9 @@ https://github.com/QwenLM/Qwen-VL
 这个地方做法和 llava 等做法不太一样。
 
 
+#  DreamLLM
+
+https://arxiv.org/pdf/2309.11499.pdf
+
+DreamLLM: Synergistic Multimodal Comprehension and Creation
 

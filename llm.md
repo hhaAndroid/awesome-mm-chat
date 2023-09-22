@@ -1,8 +1,13 @@
+# 参考
+
+https://huggingface.co/spaces/HuggingFaceH4/open_llm_leaderboard 
+
+
 # stanford_alpaca
 
-标题： Alpaca: A Strong, Replicable Instruction-Following Model
-博客： https://crfm.stanford.edu/2023/03/13/alpaca.html
-GitHub: https://github.com/tatsu-lab/stanford_alpaca
+标题： Alpaca: A Strong, Replicable Instruction-Following Model  
+博客： https://crfm.stanford.edu/2023/03/13/alpaca.html  
+GitHub: https://github.com/tatsu-lab/stanford_alpaca 
 
 没有论文。
 
@@ -31,7 +36,7 @@ GitHub: https://github.com/tatsu-lab/stanford_alpaca
 ```json
 {
   "id": "seed_task_0",
-  "name": "breakfast_suggestion", 
+  "name": "breakfast_suggestion", # 早餐建议
   "instruction": "Is there anything I can eat for a breakfast that doesn't include eggs, yet includes protein, and has roughly 700-1000 calories?", 
   "instances": [
     { 
@@ -41,6 +46,7 @@ GitHub: https://github.com/tatsu-lab/stanford_alpaca
   "is_classification": false
 }
 ```
+上述格式是作者制作的，现在有不少指令微调的算法也采用了这个数据组织格式。
 
 注意一个有效的指令可以是只有 Instruction 而没有 Input，例如
 
@@ -53,10 +59,10 @@ GitHub: https://github.com/tatsu-lab/stanford_alpaca
 - 3)使用输入优先或输出优先的方法生成实例
 - 4)过滤低质量数据
 
-(1) 指令生成
+(1) 指令生成，无需生成实例
 
 ChatGPT 具有比较强的 few-shot 学习能力即当在上下文中呈现一些现有指令时，大型预训练语言模型可以被提示生成新的和新颖的指令。这为我们提供了一种从一小部分人类编写的种子指令中扩充指令数据的方法。
-基于此，作者以自举的方式生成一组不同的指令。具体为： 首先人工构建了 175 个任务(每个任务一个指令和一个实例)来启动任务池。对于每一步从这个池中抽取8个任务指令作为上下文示例。在8条指令中，6条来自人工编写的任务，2条来自之前步骤中模型生成的任务，以促进多样性
+基于此，作者以自举的方式生成一组不同的指令。具体为： 首先人工构建了 175 个任务(repo 里面可以找到，每个任务一个指令和一个实例)来启动任务池。对于每一步从这个池中抽取8个任务指令作为上下文示例。在8条指令中，6条来自人工编写的任务，2条来自之前步骤中模型生成的任务，以促进多样性
 
 <div align=center>
 <img src="https://github.com/open-mmlab/mmyolo/assets/17425982/16b8f259-3cf0-4c4a-b568-ee9b7c31c451"/>
@@ -100,20 +106,75 @@ ChatGPT 具有比较强的 few-shot 学习能力即当在上下文中呈现一�
 
 为了鼓励多样性，只有当一条新指令与任何现有指令的 ROUGE-L 重叠小于 0.7 时，它才会被添加到任务池中。我们还排除了包含某些特定关键字(例如，图像、图片、图形)的指令，这些指令通常无法被语言模型处理。当为每条指令生成新实例时，我们过滤掉完全相同或具有相同输入但不同输出的实例。
 
-迭代上述步骤就可以生成最终的数据了。后续就是用这个数据进行模型微调： 在创建大规模指令数据后，我们使用这些数据对原始语言模型(即self - instruction)进行微调。为此，我们将指令和实例输入连接起来作为提示符，并训练模型以标准的监督方式生成实例输出。为了使模型对不同格式具有健壮性，我们使用多个模板将指令和实例输入一起编码。例如，指令可以加前缀“Task:”或不加前缀，输入可以加前缀“input:”或不加前缀，提示符末尾可以加“Output:”，中间可以加不同数量的换行符，等等。
+实际上在作者的 repo 里面说明了，其实不需要那么麻烦，可以简化掉是否分类，也不要提前生成一些指令那个步骤。
 
-整个架构图如下：
+```text
+You are asked to come up with a set of 20 diverse task instructions. These task instructions will be given to a GPT model and we will evaluate the GPT model for completing the instructions.
+
+Here are the requirements:
+1. Try not to repeat the verb for each instruction to maximize diversity.
+2. The language used for the instruction also should be diverse. For example, you should combine questions with imperative instrucitons.
+3. The type of instructions should be diverse. The list should include diverse types of tasks like open-ended generation, classification, editing, etc.
+4. A GPT language model should be able to complete the instruction. For example, do not ask the assistant to create any visual or audio output. For another example, do not ask the assistant to wake you up at 5pm or set a reminder because it cannot perform any action.
+5. The instructions should be in English.
+6. The instructions should be 1 to 2 sentences long. Either an imperative sentence or a question is permitted.
+7. You should generate an appropriate input to the instruction. The input field should contain a specific example provided for the instruction. It should involve realistic data and should not contain simple placeholders. The input should provide substantial content to make the instruction challenging but should ideally not exceed 100 words.
+8. Not all instructions require input. For example, when a instruction asks about some general information, "what is the highest peak in the world", it is not necssary to provide a specific context. In this case, we simply put "<noinput>" in the input field.
+9. The output should be an appropriate response to the instruction and the input. Make sure the output is less than 100 words.
+
+List of 20 tasks:
+###
+1. Instruction: Create a survey that asks about eating and cooking habits.
+1. Input:
+<noinput>
+1. Output:
+1. Do you enjoy cooking?
+2. Do you like to eat out?
+3. How often do you eat out?
+4. What is your favorite food?
+5. What is your favorite restaurant?
+6. What is your favorite thing to cook at home?
+7. Do you have any dietary restrictions?
+8. Do you have any food allergies?
+###
+2. Instruction: Explain human's behavior.
+2. Input:
+Behavior: cry.
+2. Output:
+There could be many reasons why a person might cry. They could be feeling sad, scared, angry, or frustrated. Sometimes people cry when they are happy or relieved. There is no one answer to why people behave the way they do.
+###
+3. Instruction:
+```
+
+将上述输入给 GPT 即可，让他补全出 20 条，然后经过后处理，把重复度高的删掉不保存。第二次运行时候可以加载这个已经生成的，继续迭代。
+
+
+迭代上述步骤就可以生成最终的数据了，一共 52k 条，格式如下
+
+```text
+    {
+        "instruction": "Describe a time when you had to make a difficult decision.",
+        "input": "",
+        "output": "I had to make a difficult decision when I was working as a project manager at a construction company. I was in charge of a project that needed to be completed by a certain date in order to meet the client\u2019s expectations. However, due to unexpected delays, we were not able to meet the deadline and so I had to make a difficult decision. I decided to extend the deadline, but I had to stretch the team\u2019s resources even further and increase the budget. Although it was a risky decision, I ultimately decided to go ahead with it to ensure that the project was completed on time and that the client\u2019s expectations were met. The project was eventually successfully completed and this was seen as a testament to my leadership and decision-making abilities."
+    },
+    {
+        "instruction": "Identify the odd one out.",
+        "input": "Twitter, Instagram, Telegram",
+        "output": "Telegram"
+    },
+```
+
+后续就是用这个数据进行模型全量微调： 在创建大规模指令数据后，我们使用这些数据对原始语言模型(即self - instruction)进行微调。为此，我们将指令和实例输入连接起来作为提示符，并训练模型以标准的监督方式生成实例输出。为了使模型对不同格式具有健壮性，我们使用多个模板将指令和实例输入一起编码。例如，指令可以加前缀“Task:”或不加前缀，输入可以加前缀“input:”或不加前缀，提示符末尾可以加“Output:”，中间可以加不同数量的换行符，等等。
+
+整个数据生成架构图如下：
 
 <div align=center>
 <img src="https://github.com/open-mmlab/mmyolo/assets/17425982/e24d3a57-c6d9-4be7-bf4b-91c10591388f"/>
 </div>
 
-这里有一篇文章有详细介绍： https://zhuanlan.zhihu.com/p/614916562
-如果不想自己看代码，可以看： https://zhuanlan.zhihu.com/p/617343738
+alpaca 训练数据其实就是基于上述脚本生成的 52k 指令数据集，有一些 prompt 的修改。根据官网描述
 
-alpaca 训练数据其实就是基于上述脚本生成的 52k 指令数据集，有一些 prompt 的修改。 根据官网描述
-
-即 fintune 时候每条数据格式大概为：
+即 finetune 时候每条数据输入格式大概为：
 
 ```
 Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
@@ -126,6 +187,7 @@ Below is an instruction that describes a task, paired with an input that provide
 
 ### Response:
 ```
+
 或者
 ```
 Below is an instruction that describes a task. Write a response that appropriately completes the request.
@@ -135,19 +197,19 @@ Below is an instruction that describes a task. Write a response that appropriate
 
 ### Response:
 ```
-This produced an instruction-following dataset with 52K examples obtained at a much lower cost (less than $500).
 
-训练好后模型推理，直接用的是模板二，用户无需输入 input，更方便。
+模型输出就是 Response 后面内容。上述的内容会全部输入到模型中，然后只有 Response 部分才计算 loss。
+
+训练好后模型推理，直接用的是模板二，用户无需输入 input，更方便。可以发现不支持多轮对话，感觉就是类似一个为了特定任务而做的一个微调模型。
+
+这里有一篇文章有详细介绍： https://zhuanlan.zhihu.com/p/614916562  
+如果不想自己看代码，可以看： https://zhuanlan.zhihu.com/p/617343738  
 
 ## 模型训练
 
 全量微调。
 
-<div align=center>
-<img src="https://github.com/open-mmlab/mmyolo/assets/17425982/e24d3a57-c6d9-4be7-bf4b-91c10591388f"/>
-</div>
-
-- fine-tunes LLaMA-7B: 4 A100 80G GPUs in FSDP full_shard mode python 3.10 用时 3 个小时。
+- fine-tunes LLaMA-7B: 4 A100 80G GPUs in FSDP full_shard bf16 mode python 3.10 用时 3 个小时。
 
 显存还是比较大，作者说未来会采用 lora 微调。当然现在已经出现了 Alpaca-Lora，也出现了专门的中文版 Alpaca。
 
@@ -155,12 +217,20 @@ This produced an instruction-following dataset with 52K examples obtained at a m
 
 ## 模型评估
 
-为了评估Alpaca，我们对来自自建评估集的输入进行了人工评估（由5位学生作者进行）。这个评价集是由自修课作者收集的，涵盖了多样化的面向用户的指令，包括电子邮件写作、社交媒体和生产力工具。我们对text-davinci-003和Alpaca 7B进行了盲目的配对比较，我们发现这两个模型的性能非常相似： 在与text-davinci-003的比较中，Alpaca赢得了90次对89次。
+为了评估Alpaca，对来自自建评估集的输入进行了人工评估（由5位学生作者进行）。这个评价集是由自修课作者收集的，涵盖了多样化的面向用户的指令，包括电子邮件写作、社交媒体和生产力工具。我们对text-davinci-003和Alpaca 7B进行了盲目的配对比较，我们发现这两个模型的性能非常相似： 在与text-davinci-003的比较中，Alpaca赢得了90次对89次。
 
 考虑到模型的规模较小，而且指令的后续数据量不大，我们对这个结果感到相当惊讶。除了利用这个静态评估集，我们还对Alpaca模型进行了交互式测试，发现Alpaca在不同的输入上往往表现得与text-davinci-003类似。我们承认，我们的评估在规模和多样性方面可能是有限的。所以我们发布了Alpaca的互动演示，并鼓励读者自己评估Alpaca并给我们反馈。
 
+# alpaca-lora
+https://github.com/tloen/alpaca-lora
+
+# Chinese-LLaMA-Alpaca
+
+https://github.com/ymcui/Chinese-LLaMA-Alpaca  
+https://github.com/ymcui/Chinese-LLaMA-Alpaca-2 
+
 # Vicuna 小羊驼
-Vicuna 是 一个开源聊天机器人，号称达到了 ChatGPT 的 90%，也是基于 LLaMA 通过指令微调而来。
+Vicuna 是一个开源聊天机器人，号称达到了 ChatGPT 的 90%，也是基于 LLaMA 通过指令微调而来。
 
 Vicuna 开源代码地址：https://github.com/lm-sys/FastChat
 
@@ -170,16 +240,16 @@ Fork 并注释版本： https://github.com/hhaAndroid/FastChat/tree/hha
 
 要特别注意对比 Alpaca 的区别。
 
-博客地址：https://lmsys.org/blog/2023-03-30-vicuna/
+博客地址：https://lmsys.org/blog/2023-03-30-vicuna/  
 知乎： https://zhuanlan.zhihu.com/p/618389519
 
 没有论文。
 
-- 训练数据不一样，Alpaca 采用的是 52K 通过 Self-Instruct 生成的数据，而 Vicuna 是用了  70K user-shared ChatGPT conversations 数据集
-- 评估方式更加智能，通过构建 prompt 让 ChatGPT4 打分
-- 基于 Alpaca 开源代码，改进了代码，更省显存，训练更加高效。在分布式部署方面做的更好
+- 训练数据不一样，Alpaca 采用的是 52K 通过 Self-Instruct 生成的数据，而 Vicuna 是用了  70K user-shared ChatGPT conversations 数据集,数据集应该是更好，且更符合人类喜好
+- 评估方式更加智能，通过构建 prompt 让 ChatGPT4 打分，而不是人类来检查
+- 基于 Alpaca 开源代码，改进了代码，更省显存，训练更加高效。在分布式部署方面做的更好，代码非常完善
 
-相同点： 都是全量微调，但是好像性能比 Alpaca 强。
+相同点： 都是全量微调，性能比 Alpaca 强。
 
 训练仅使用 ShareGPT 等公开数据，而不是我们自己调用ChatGPT API 生成数据，基于 ShareGPT (70K user-shared ChatGPT conversations) 维护者的意愿，仅公开模型和训练方法，而不会公开和ShareGPT相关的训练数据，但是开源项目中包括了数据清理的部分
 
@@ -201,21 +271,71 @@ The cost of training Vicuna-13B is around $300。注意他不是 PEFT 微调而�
 
 训练时候为了确保数据质量，我们将HTML转换回markdown，并过滤掉一些不合适或低质量的样本。此外，我们将冗长的对话分成较小的片段，以符合模型的最大上下文长度。
 
-我们的训练配方建立在斯坦福大学羊驼的基础上，有以下改进。
+我们的训练方案建立在斯坦福大学羊驼的基础上，有以下改进。
 
 - 内存优化： 为了使Vicuna能够理解长上下文，我们将最大上下文长度从alpaca的512扩展到**2048**，这大大增加了GPU的内存需求。我们通过利用gradient checkpointing and [flash attention](https://arxiv.org/abs/2205.14135) 来解决内存压力。
-- 多轮对话： 我们调整训练损失以考虑到多轮对话，并仅根据聊天机器人的输出计算微调损失。
+- 多轮对话： 我们调整训练损失以考虑到多轮对话(看来训练数据有多轮对话)，并仅根据聊天机器人的输出计算微调损失。
 - Cost Reduction via Spot Instance： 40倍的数据集和4倍的序列长度给训练费用带来了巨大的挑战。我们采用 SkyPilot managed spot (好像是一个管理机) 来降低成本，利用较便宜的实例，自动恢复抢占和自动区域切换。这个解决方案将7B模型的训练成本从500美元降至140美元左右，13B模型的训练成本从1千美元降至300美元左右。
 
+训练数据格式如下：
+
+```text
+  {
+    "id": "identity_0",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "Who are you?"
+      },
+      {
+        "from": "gpt",
+        "value": "I am Vicuna, a language model trained by researchers from Large Model Systems Organization (LMSYS)."
+      },
+      {
+        "from": "human",
+        "value": "What can you do?"
+      },
+      {
+        "from": "gpt",
+        "value": "I can chat with you."
+      }
+    ]
+  },
+  {
+    "id": "identity_1",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "Who are you?"
+      },
+      {
+        "from": "gpt",
+        "value": "My name is Vicuna, and I'm a language model developed by Large Model Systems Organization (LMSYS)."
+      }
+    ]
+  },
+```
+
+上面的案例转换为最终模型输入和输出字符如下：
+
+```text
+A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions. USER: Who are you? ASSISTANT: I am Vicuna, a language model trained by researchers from Large Model Systems Organization (LMSYS).</s>USER: What can you do? ASSISTANT: I can chat with you.</s>
+```
+
+包括 prompt, 输入和输出，其中输出部分才有 loss，多轮对话的话也是对应的输出部分才有 loss。
+
+## 512 如何外推为 2048 ？
+
+这涉及到窗口外推手段。
 
 ## CentOS 7 + 32G V100 本地部署流程
 使用环境： PyTorch 1.9， CUDA 11.1
 
 **(1) FastChat 安装**
 
-git clone https://github.com/lm-sys/FastChat.git
-cd FastChat
-pip install -e .
+git clone https://github.com/lm-sys/FastChat.git  
+cd FastChat  
+pip install -e .  
 
 我们使用的是最新的 `vicuna-7b-delta-v1.1` 权重，所以需要安装 fschat>=0.2.0 和 transformers>=4.28.0
 
@@ -277,9 +397,12 @@ python -m fastchat.serve.cli --model-path /home/huanghaian/vicuna-7b --device cp
 <img src="https://user-images.githubusercontent.com/17425982/233524677-cf89dee8-3ee8-47f9-9dc5-667aac27ee51.png"/>
 </div>
 
-后续会更新 vicuna 的一些关键代码注释，以及一些使用经验。
+# InternLM
+
+发布了两个开源的预训练模型：InternLM-7B 和 InternLM-20B
 
 # Qwen-7B
 
-https://github.com/QwenLM/Qwen-7B/
+https://github.com/QwenLM/Qwen-7B/  
+https://github.com/QwenLM/Qwen-7B/blob/main/tech_memo.md
 

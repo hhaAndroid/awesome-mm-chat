@@ -675,3 +675,7 @@ https://arxiv.org/pdf/2309.06123.pdf
 
 为啥验证实验都是只有分类这一个任务？
 
+# LongLoRA
+
+https://github.com/dvlab-research/LongLoRA
+

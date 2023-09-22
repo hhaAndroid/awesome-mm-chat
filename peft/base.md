@@ -226,7 +226,7 @@ model = cls(config, *model_args, **model_kwargs)
         self.device_map = None
 ```
 
-上述就将类自动构建好了,下面看生成函数 transformers/generation/utils.py/GenerationMixin/generate, 所有的生成相关的逻辑都是在这个类里面处理的。
+上述就将类自动构建好了,下面看生成函数 `transformers/generation/utils.py/GenerationMixin/generate`, 所有的生成相关的逻辑都是在这个类里面处理的。
 
 MT5 是一个编码器解码器网络,因此生成时候需要先运行编码器,然后运行解码器,这个流程都是在 generate 里面控制,而不是 forward 里面。
 
