@@ -120,7 +120,7 @@ class GPT2ForSequenceClassification(GPT2PreTrainedModel):
 
 还有两个特定的 head。
 
-因此我们要做模型推理，就必须要用 GPT2LMHeadModel
+因此我们要做模型推理，就必须要用 `GPT2LMHeadModel`
 
 ```python
 from transformers import GPT2Tokenizer, GPT2LMHeadModel
@@ -129,7 +129,7 @@ tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
 model = GPT2LMHeadModel.from_pretrained("gpt2", torch_dtype="auto", device_map="auto")
 
 inputs = tokenizer.encode("Replace me by any text you'd like.", return_tensors="pt").to("cuda")
-# 这个模型就没有在后面追加结束符
+# 这个模型就没有在后面追加结束符，因为不需要
 outputs = model.generate(inputs)
 # 在推理时候，decoder 不需要注入额外的开始解码符，因为这个是 decoder-only 模型，直接基于前面的输入进行预测解码即可
 print(tokenizer.decode(outputs[0]))  # I'm not sure if you're aware
@@ -137,5 +137,57 @@ print(tokenizer.decode(outputs[0]))  # I'm not sure if you're aware
 
 ## BERT 模型推理
 
-BERT是另一个系列的模型，不同于 mt0 和 gpt，是一个掩码预训练模型，是只有 encoder 的模型。
+https://huggingface.co/bert-base-uncased  
+
+BERT是另一个系列的模型，不同于 mt0 和 gpt，是一个掩码预训练模型，是只有 encoder 的模型。训练方式也和前面的两个不太一样。
+
+BERT 是基于 GPT1 改进而来，因此使用范式和 GPT1 类似，都是先无监督预训练，然后在特定任务上进行监督训练。
+
+全部代码位于 `transformers/models/bert/modeling_bert.py`
+
+```python
+BertForPreTraining, # bert model+ 预训练时候的  `masked language modeling` head and a `next sentence prediction (classification)` head
+BertForMaskedLM, # bert model+ mlm head 用于 mlm 预测，移除了 NSP head
+BertForNextSentencePrediction, # bert model+ nsp head 用于 nsp 预测，移除了 MLM head
+BertForMultipleChoice, # bert model+ multiple choice head 用于多选任务
+BertForQuestionAnswering, # bert model+ qa head 用于 qa 任务
+BertForSequenceClassification, # bert model+ sequence classification head 用于 句子分类
+BertForTokenClassification, # bert model+ token classification head 用于 token 分类
+BertLMHeadModel, # bert model+ clm head 用于在生成任务上进行 funetune
+```
+
+要分清楚 nlp 里面的 token 分类和普通的文本分类的区别。
+
+在自然语言处理（NLP）中，"Token分类"和"Text分类"是两种不同的任务，主要区别在于任务的粒度和目标。
+
+- Token分类：
+
+Token分类任务是将输入文本中的每个单词或子词（token）分配到预定义的类别中。每个单词或子词都被视为一个独立的实例，独立地进行分类。
+例如，给定一个句子，Token分类任务可以是将每个单词标记为"名词"、"动词"、"形容词"等等。每个单词都被视为一个独立的分类问题。
+
+也就是说他是一个一个 token 分类的，而不是整句话分类。
+
+Text分类：
+
+- Text 分类任务
+
+将整个文本或句子分配到预定义的类别中。目标是对整个文本进行分类，而不是对单个词或子词进行分类。
+例如，给定一段电影评论，Text分类任务可以是将其分类为"正面评价"或"负面评价"。整个文本被视为一个分类问题。
+总结起来，Token分类任务将输入文本中的每个单词或子词视为独立的实例进行分类，而Text分类任务将整个文本或句子作为一个实例进行分类。任务的粒度和处理方式导致了这两种任务的区别。
+
+Token分类的常见应用场景：
+
+- 词性标注（Part-of-Speech Tagging）：将每个单词标记为名词、动词、形容词等，用于句法分析、语义分析等任务。
+- 命名实体识别（Named Entity Recognition）：识别文本中的人名、地名、组织名等特定实体。
+- 语义角色标注（Semantic Role Labeling）：为句子中的每个词语标注其在句子中所扮演的语义角色，如"施事者"、"受事者"等。
+- 词义消歧（Word Sense Disambiguation）：确定单词在不同上下文中的具体含义。
+- 情感分析（Sentiment Analysis）：对每个单词或子词进行情感分类，如"积极"、"消极"。
+
+Text分类的常见应用场景：
+
+- 文本分类：将整个文本分为不同的类别，如新闻分类、垃圾邮件过滤、情感分类等。
+- 文档分类：对整个文档进行分类，如文档主题分类、文档类型分类等。
+- 故事情节分类：根据文本内容将故事情节分类为不同的类型，如小说、电影剧本等。
+- 问题分类：将问题文本分类为不同的问题类型，用于问答系统、知识库分类等。
+- 主题识别：对文本进行主题识别和归类，如社交媒体话题识别、论坛帖子分类等。
 

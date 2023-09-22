@@ -57,12 +57,53 @@ GPT-2的模型结构和GPT-1的模型结构类似，都是基于Transformer的�
 1. 调整Transformer的decoder： 将归一化层移动到block的输入位置并且在最后一个self-attention之后加了一层归一化。
 2. 数据量扩增：GPT1利用了约5GB，GPT2利用了40GB，并且质量更高
 3. 词典被扩展到了50257，context的维度从512提高到了1024并且batchsize采用了512。
-4. **去掉了Fine-tune部分：使用了完全的无监督训练。这样使得预训练和Fine-tuning的结构完全一致。**
-5. 堆叠的层数增加：GPT1使用的12层的 TransformerDecoder，GPT2分别使用了24、36、48层。
+4. 堆叠的层数增加：GPT1使用的12层的 TransformerDecoder，GPT2分别使用了24、36、48层。
+5. **去掉了Fine-tune部分：使用了完全的无监督训练。这样使得预训练和Fine-tuning的结构完全一致。**
 
 总结来说，就是 GPT2 认为只需要做预训练就可以了，只要训练语料足够大，模型足够大，那么就不需要所谓的 funetune了，可以通过类似 prompt 的方式来轻松实现各种任务。现在这个思想已经是主流了。
 
 也就是说 GPT2 只有 text prediction head。
 
 GPT-2的最大贡献是验证了通过海量数据和大量参数训练出来的词向量模型有迁移到其它类别任务中而不需要额外的训练。但是很多实验也表明，GPT-2的无监督学习的能力还有很大的提升空间，甚至在有些任务上的表现不比随机的好。尽管在有些zero-shot的任务上的表现不错，但是我们仍不清楚GPT-2的这种策略究竟能做成什么样子。GPT-2表明随着模型容量和数据量的增大，其潜能还有进一步开发的空间，基于这个思想，诞生了我们下面要介绍的GPT-3。
+
+# GPT3
+https://arxiv.org/abs/2005.14165  
+Language Models are Few-Shot Learners
+
+虽然 GPT-2 主推的 zero-shot 在创新度上有比较高的水平，但是由于其在效果上表现平平，所以在业界并没有取得比较大的影响力，而 GPT-3 正是为了解决效果上的问题而提出的。GPT-3 不再去追求那种极致的不需要任何样本就可以表现很好的模型，而是考虑像人类的学习方式那样，仅仅使用极少数样本就可以掌握某一个任务，因此就引出了 GPT-3 标题 Language Models are Few-Shot Learners。
+
+这里的 few-shot 不是像之前的方式那样，使用少量样本在下游任务上去做微调，因为在 GPT-3 那样的参数规模下，即使是参数微调的成本也是高到无法估计。他其实是我们现在说的 In-context learning。
+
+<div align=center>
+<img src="https://github.com/QwenLM/Qwen-7B/assets/17425982/7cba5316-3f33-41df-ad9c-7644ed933888"/>
+</div>
+
+上图解释的非常清楚了。
+
+模型参数如下所示，gpt3 一般指的就是 1750 亿参数的最大模型
+
+<div align=center>
+<img src="https://github.com/QwenLM/Qwen-7B/assets/17425982/95c10bcc-50d3-49fc-8269-74eb379821ba"/>
+</div>
+
+相比于 gpt2 ，整个结构几乎没有变。但是引入了 Sparse Transformer 中的 sparse attention 模块（稀疏注意力）
+
+使用 sparse attention 的好处主要有以下两点：
+
+1. 减少注意力层的计算复杂度，节约显存和耗时，从而能够处理更长的输入序列；
+2. 具有“局部紧密相关和远程稀疏相关”的特性，对于距离较近的上下文关注更多，对于距离较远的上下文关注较少；
+
+关于 sparse attention 详情可参考《Generating Long Sequences with Sparse Transformers》
+
+GPT-3共训练了5个不同的语料，分别是低质量的Common Crawl，高质量的WebText2，Books1，Books2和Wikipedia，GPT-3根据数据集的不同的质量赋予了不同的权值，权值越高的在训练的时候越容易抽样到
+
+<div align=center>
+<img src="https://github.com/QwenLM/Qwen-7B/assets/17425982/c2d48c51-e90a-4f0a-8148-646b77f6b29c"/>
+</div>
+
+# InstructGPT
+
+Training language models to follow instructions with human feedback   
+https://arxiv.org/abs/2203.02155
+
 

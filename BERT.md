@@ -12,13 +12,15 @@
 
 ## 原理简析
 
+https://huggingface.co/bert-base-uncased
+
 示意图如下：
 
 <div align=center>
 <img src="https://user-images.githubusercontent.com/17425982/236749418-e5823526-8319-4a89-8262-215b09798d68.png"/>
 </div>
 
-- NSP： "next sentence prediction 下一句预测 
+- NSP： "next sentence prediction" 判断输入的两句话在语义上是否是连续的 (这两个句子可以是连续的语篇文本，也可以是随机选择的两个不相关的句子)，注意并不是 next token prediction, 是一个2分类任务
 
 BERT 是基于 GPT1 来进行改进的。GPT1 是单向的 Transformer，作者认为单向的 Transformer 会导致模型对于上下文的理解不够，因此提出了 BERT (当然从现在来看，其实 GPT 系列效果其实可以非常好)。 BERT 是双向的 Transformer。
 
