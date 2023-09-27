@@ -78,9 +78,7 @@ PixelBERT 图示如下
 # Towards Open Vocabulary Learning: A Survey
 https://arxiv.org/abs/2306.15880
 
-# OWL-ST
 
-Scaling Open-Vocabulary Object Detection
 
 # MDETR-重点
 
@@ -262,6 +260,13 @@ https://huggingface.co/docs/transformers/model_doc/owlvit#overview
 
 因为图片和文本特征没有进行早期交互，因此可以实现 one-shot detection
 
+# OWL-ViT V2
+
+OWL-ST  
+Scaling Open-Vocabulary Object Detection
+
+
+
 # DetCLIP
 
 完全没法 follow
@@ -390,3 +395,9 @@ https://arxiv.org/pdf/2309.00775.pdf
 
 # SLIME: SEGMENT LIKE ME
 https://arxiv.org/pdf/2309.03179.pdf 
+
+## MosaicFusion
+
+MosaicFusion: Diffusion Models as Data Augmenters for Large Vocabulary Instance Segmentation
+https://arxiv.org/pdf/2309.13042.pdf
+

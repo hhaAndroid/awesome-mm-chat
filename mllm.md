@@ -1056,6 +1056,12 @@ https://github.com/QwenLM/Qwen-VL
 
 将各种视觉任务组织为固定格式，然后同时训练。文本生成数据集用的是内部数据。
 
+<div align=center>
+<img src="https://github.com/QwenLM/Qwen/assets/17425982/1564befe-e577-4e76-a506-e0ba40e94ca2"/>
+</div>
+
+红色是 gt label，只训练这个部分。
+
 grounding 数据集参考了 kosmos2 里面的生成方式。还特意加了不少合成的 ocr 数据。具体描述建议看论文。
 
 我们只需通过将相同的任务数据打包成长度为 2048 的序列来构建交错的图像文本数据。
@@ -1064,14 +1070,60 @@ grounding 数据集参考了 kosmos2 里面的生成方式。还特意加了不�
 
 **(3) 有监督微调**
 
-前面两步预训练相当于注入了一些知识，最后一步用于让其具备质量跟随和对话能力，得到 chat 版本。
+前面两步预训练相当于注入了一些知识，最后一步用于让其具备质量跟随和对话能力，得到 chat 版本。这一步数据也非常重要，
+
+多模态指令调优数据主要来自LLM自指令生成的标题数据或对话数据，通常只解决单图像对话和推理，仅限于图像内容理解。我们通过手动注释、模型生成和策略连接构建了一组额外的对话数据，以将定位和多图像理解能力纳入 Qwen-VL 模型中(具体咋做好像没有说)。
+
+我们在训练过程中混合多模态和纯文本对话数据，以确保模型在对话能力方面的普遍性。指令调优数据相当于350k。
+
+之前好像还没有出现过多模态多轮对话的做法，qwen 在数据集和输入格式方面进行了一些处理。
+
+在每张图片前，加了一个图片顺序 id，区分是第几张图片，并且加了特殊 token <|im_start|> and <|im_end|>
+
+<div align=center>
+<img src="https://github.com/QwenLM/Qwen/assets/17425982/85907dfd-b233-4413-a12b-12699a3a546f"/>
+</div>
+
+上述格式其实是 openai chat 格式。
+
+在训练时候只训练蓝色部分，并且视觉编码器固定。
+
+## 评估
+
+<div align=center>
+<img src="https://github.com/QwenLM/Qwen/assets/17425982/73e14397-54aa-4646-a531-09cf88141d49"/>
+</div>
+
+<div align=center>
+<img src="https://github.com/QwenLM/Qwen/assets/17425982/67cc7bef-eaef-4f8a-8bb9-577104108322"/>
+</div>
+
+<div align=center>
+<img src="https://github.com/QwenLM/Qwen/assets/17425982/3335ac58-c966-461e-b7bf-6849ffe0672d"/>
+</div>
+
+<div align=center>
+<img src="https://github.com/QwenLM/Qwen/assets/17425982/67e62124-5216-473f-a021-775b0468d709"/>
+</div>
+
+可以看到 Qwen-VL 模型好于 chat 模型，这也是可以理解的，因为牺牲了一些性能换取了对话功能。
 
 
+问题： 图文训练的 batch 都是上千，这是要多少算力来训练？
+问题： llm funetune 是为了能够在特定领域回答的正确或者实现其他特定功能,例如 nlp 里面的下游任务，例如让他可以正确回答 openmmlab 相关通用问题，那么 vllm 的微调是希望具备啥功能？ 回答 openmmlab 这种问题应该用不到 visual，
+如果是 ocr 相关问题，感觉也不是很需要，因为 ocr 本身应该是通用技术才是。类似 mPLUG-DocOwl 一样做特定场景的图文理解？
 
+如果以 visual grounding 为例，微调后应该是基于新的域图片能够进行视觉定位能力。 如果想学习，可以以 refcoco 微调为例跑跑看，这个例子不行，因为 refcoco 训练集已经在训练样本了。
+
+其实也可以用 coco 数据来做微调，类似于支持开放词汇，但是考虑一张图片可能会存在超级多物体，因此输出时候应该一句话就只包括一个类别，例如写 all people，这样可能就少很多。 就应该可以玩起来了，就是评估时候有点傻，一张图片要跑 80 次
+
+从这个角度来看， GRES: Generalized Referring Expression Segmentation 数据会更合适，既包括多物体检测，也包括 ref。
 
 #  DreamLLM
-
 https://arxiv.org/pdf/2309.11499.pdf
 
 DreamLLM: Synergistic Multimodal Comprehension and Creation
 
+# Multimodal Foundation Models
+
+https://arxiv.org/pdf/2309.10020.pdf
