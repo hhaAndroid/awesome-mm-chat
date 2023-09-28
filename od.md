@@ -115,3 +115,18 @@ https://github.com/bytedance/DiffusionEngine
 疑问：baseline 训练都是 6x 的，有点久？
 疑问：基于 coco 2017 训练的数据看起来和原始图片其实非常类似，所以这个扩充其实只是相当于训练图片的简单扩展，多样性好像不多？如果数据集很小，扩展后依然差不多吧，效果有多明显？
 
+# MOCAE
+
+MOCAE: Mixture of Calibrated Experts Significantly Improves Object Detection
+
+https://arxiv.org/pdf/2309.14976v2.pdf
+
+代码说会开源。
+
+# UniHead
+
+https://arxiv.org/pdf/2309.13242.pdf
+UniHead: Unifying Multi-Perception for Detection Heads
+
+做纯检测的论文，后续会开源。
+

@@ -15,6 +15,7 @@ https://zhuanlan.zhihu.com/p/644133265
 数据并行即最常用的 DP 策略： 假设有 N 张卡，每张卡都保存一个完整的模型副本，每一次迭代（iteration/step）都将 batch 数据分割成 N 个等大小的micro-batch，每张卡根据拿到的micro-batch数据独立计算梯度，然后调用AllReduce计算梯度均值，每张卡再独立进行参数更新。
 模型并行 MP 策略，有时候也称为 tensor 并行： 水平分割，有的 tensor/layer 很大，一张卡放不下，将 tensor 分割成多块，一张卡存一块。每个张量被分割成多个块，所以不再将整个张量存储在单个GPU上，而是将每个张量的碎片分别存储在其指定的GPU上。在处理过程中，每个碎片在不同的GPU上独立且并行地进行处理，最终在步骤结束时进行同步。这可以被称为水平并行，因为分割是在水平层面上进行的。
 流水线并行 PP: 模型在多个 GPU 上垂直（层级）分割，这样模型的一层或多层只会放在单个 GPU 上。每个 GPU 并行处理管道的不同阶段，并在一个小批次的数据上进行工作。注意： 为了防止”一卡工作，众卡围观“，实践中PP也会把batch数据分割成多个micro-batch(也就是在单个卡内部还会进行切分 batch)，流水线执行
+流水线并行可以看 https://zhuanlan.zhihu.com/p/658773834
 
 <div align=center>
 <img src="https://github.com/open-mmlab/mmdetection/assets/17425982/bb65bc8b-da7d-4b75-ac38-8df85c89506b"/>
@@ -324,7 +325,7 @@ FullyShardedDataParallel 有几个核心参数：
 RuntimeError: mat2 must be a matrix, got 1-D tensor
 ```
 
-SwinBlock 计算中使用了 checkpoint，因此在 forward 时会调用到 torch.utils.checkpoint.checkpoint 函数，而这个函数会将 forward 函数包装成一个 CheckpointFunction，然后返回这个 CheckpointFunction 的 forward 函数。
+上述错误原因很明显，weight 正常来说是一个 2d tensor，现在是 1d，说明还是 flatten 的状态，说明并没有触发 all gather。
 
 ```python
     def forward(self, x, hw_shape):
@@ -350,12 +351,34 @@ SwinBlock 计算中使用了 checkpoint，因此在 forward 时会调用到 torc
         return x
 ```
 
-可以看出是 backward 的时候，调用了 swin.py 里的 forward，但是此时的 self.qkv 是一个 FSDP module，因此在执行 self.qkv(x) 时，会直接调用 FSDP 的 __getattr__ 方法，找到了 FSDP 的 forward，而不是 swin.py 里的 forward，因此在执行 FSDP 的 forward 时，会报错。
+视觉大模型训练占比最大的其实是激活，因此 checkpoint 必然需要，否则不管你啥 FSDP 都没用，因为激活值并没有切分。
 
-解决办法是让 FSDP 和 checkpoint 兼容。
+解决办法是让 FSDP 和 checkpoint 兼容，目前已经解决。
 
 # DeepSpeed
+https://www.deepspeed.ai/getting-started/ 官方文档 
+https://github.com/microsoft/DeepSpeed  
+https://huggingface.co/docs/transformers/main/main_classes/deepspeed
+
+单卡也可以使用 DeepSpeed，应该是使用 ZeRO-offload，将部分数据 offload 到 CPU，降低对显存的需求
+
+- ZeRO-stage-0: stage 0会禁用所有的分片，然后把DeepSpeed当作时DDP来使用
+- ZeRO-Offload 背后的核心技术是在 ZeRO-2 的基础上将优化器状态和梯度卸至 CPU 内存。这个方法让 ZeRO-Offload 能最大程度降低拷贝至 CPU 导致的计算效率损失，同时达到和 ZeRO-2 相同，甚至有时超过的效率
+- ZeRO-Infinity: 利用NVMe固态硬盘打破GPU显存墙
+
+https://zhuanlan.zhihu.com/p/630734624 一些参数说明
+https://zhuanlan.zhihu.com/p/343570325 官方推文翻译
+https://zhuanlan.zhihu.com/p/635358854 一些教程翻译
+
+```shell
+pip install deepspeed
+```
+
+安装完成后，你可以使用 `ds_report` 或 `python -m deepspeed.env_report` 命令查看 DeepSpeed 环境报告，以验证你的安装并查看你的机器与哪些 ops 兼容
 
 # Megatron-LM
 
 # FastChat
+
+# MMEngine 相关源码记录
+

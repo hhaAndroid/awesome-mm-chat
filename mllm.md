@@ -1127,3 +1127,28 @@ DreamLLM: Synergistic Multimodal Comprehension and Creation
 # Multimodal Foundation Models
 
 https://arxiv.org/pdf/2309.10020.pdf
+
+# InternLM-XComposer
+
+https://arxiv.org/pdf/2309.15112.pdf  
+https://github.com/InternLM/InternLM-XComposer  
+InternLM-XComposer: A Vision-Language Large Model for Advanced Text-image Comprehension and Composition
+
+对标 qwen-vl。
+
+# DeepSpeed-VisualChat
+
+https://arxiv.org/abs/2309.14327
+DeepSpeed-VisualChat: Multi-Round Multi-Image Interleave Chat via Multi-Modal Causal Attention 
+
+# Jointly Training Large Autoregressive Multimodal Models
+
+https://arxiv.org/abs/2309.15564
+
+图生文，文生图联合训练，从而让模型具备图文联合生成能力。
+
+# BLIP-Adapter
+
+BLIP-Adapter: Parameter-Efficient Transfer Learning for Mobile Screenshot Captioning
+https://arxiv.org/pdf/2309.14774.pdf
+
