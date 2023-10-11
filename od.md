@@ -130,3 +130,24 @@ UniHead: Unifying Multi-Perception for Detection Heads
 
 做纯检测的论文，后续会开源。
 
+# DETR Doesn’t Need Multi-Scale or Locality Design
+
+ICCV2023
+
+https://arxiv.org/abs/2308.01904
+
+
+# SIMPLR
+
+比 ViTDet 更加 plain，只需要单层特征图就行。代码说后续会开源
+
+https://arxiv.org/pdf/2310.05920.pdf
+SIMPLR: A SIMPLE AND PLAIN TRANSFORMER FOR OBJECT DETECTION AND SEGMENTATION
+
+# Anchor-Intermediate Detector
+
+https://arxiv.org/pdf/2310.05666.pdf
+Anchor-Intermediate Detector: Decoupling and Coupling Bounding Boxes for Accurate Object Detection
+
+
+

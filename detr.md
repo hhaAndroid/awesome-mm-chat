@@ -1002,7 +1002,7 @@ https://zhuanlan.zhihu.com/p/548147089
 
 # DETR 应用于密集场景
 
-DDQ、
+DDQ
 
 DETR 研究分支，包括预训练。
 

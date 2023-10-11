@@ -1119,6 +1119,56 @@ grounding 数据集参考了 kosmos2 里面的生成方式。还特意加了不�
 
 从这个角度来看， GRES: Generalized Referring Expression Segmentation 数据会更合适，既包括多物体检测，也包括 ref。
 
+## 推理体验
+
+可以使用 v100 跑 vl-7b 模型
+
+```python
+from transformers import AutoModelForCausalLM, AutoTokenizer
+import torch
+
+tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen-VL", trust_remote_code=True, cache_dir='./qwen-7b-vl')
+model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen-VL", device_map="cuda", trust_remote_code=True, cache_dir='./qwen-7b-vl').eval()
+
+query = tokenizer.from_list_format([
+    {'image': 'https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen-VL/assets/demo.jpeg'}, # Either a local path or an url
+    {'text': 'Generate the caption in English with grounding:'},
+])
+inputs = tokenizer(query, return_tensors='pt')
+inputs = inputs.to(model.device)
+pred = model.generate(**inputs)
+response = tokenizer.decode(pred.cpu()[0], skip_special_tokens=False)
+print(response)
+# <img>https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen-VL/assets/demo.jpeg</img>Generate the caption in English with grounding:<ref> Woman</ref><box>(451,379),(731,806)</box> and<ref> her dog</ref><box>(219,424),(576,896)</box> playing on the beach<|endoftext|>
+image = tokenizer.draw_bbox_on_latest_picture(response)
+if image:
+  image.save('2.jpg')
+else:
+  print("no box")
+```
+
+因为涉及到远程代码，如果想比较方便查看，可以在加载时候设置 cache_dir，这样就不会放到 .cache 下面了。但是如果想对远程代码进行调试，最好在代码运行前设置环境变量，
+因此虽然代码已经下载了，但是在运行前 hf 内部会移动到 .cache 下，导致无法调试。
+
+```python
+import os
+os.environ['HF_MODULES_CACHE'] = './'
+
+from transformers import AutoTokenizer
+
+tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen-VL", trust_remote_code=True, cache_dir='./qwen-7b-vl')
+
+query = tokenizer.from_list_format([
+    {'image': 'https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen-VL/assets/demo.jpeg'}, # Either a local path or an url
+    {'text': 'Generate the caption in English with grounding:'},
+])
+inputs = tokenizer(query, return_tensors='pt')
+print(inputs)
+```
+
+这样设置后，远程调用的代码就会在当前工程下，你就可以打断点了。
+
+
 #  DreamLLM
 https://arxiv.org/pdf/2309.11499.pdf
 
@@ -1151,4 +1201,83 @@ https://arxiv.org/abs/2309.15564
 
 BLIP-Adapter: Parameter-Efficient Transfer Learning for Mobile Screenshot Captioning
 https://arxiv.org/pdf/2309.14774.pdf
+
+# Making LLaMA SEE and Draw with SEED Tokenizer
+
+https://browse.arxiv.org/pdf/2310.01218.pdf  
+https://github.com/AILab-CVC/SEED  
+
+额外训练一个 visual tokenizer，类似于一个 codebook ，然后让 mllm 既可以接收图文，也可以生成图文，从而实现图像对话编辑等功能
+
+# PINK
+
+https://browse.arxiv.org/pdf/2310.00582.pdf
+https://github.com/SY-Xuan/Pink
+PINK: UNVEILING THE POWER OF REFERENTIAL COMPREHENSION FOR MULTI-MODAL LLMS
+
+如何赋予一个 MLLM 模型以 RC 能力？ RC 即包括输入也包括输出
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/3379c30a-e07d-42da-9339-f797a51237b3"/>
+</div>
+
+通过利用现有数据集的注释，并减少对昂贵的GPT4 API的依赖，来增强LLMs的RC能力的原创性探索。
+
+GPT4RoI leverage the ROI operation to extract features of referring objects. These works require extra modules and may lose context information because of the ROI operation. More importantly, these works cannot give answers with referring objects, limiting their applications, e.g., visual grounding.
+
+RC tasks 通常来说包括：
+
+- visual grounding (VG)：给定一张图片和一个描述，找到描述中的物体
+- grounding captioning (GC)：给定一张图片和一个 bbox，生成 bbox 相应的描述
+- pointQA (PQA)：给定一张图片和一个点，回答点对应的问题
+
+作者认为这些 RC 任务还不够，因此作者进行了扩展：
+
+- Visual Relation Reasoning： 给定图片中对应的某个物体和目标，模型预测两者之间的关系；给定图片中的某个物体和关系，模型要找出符合这个关系的所有目标
+- Coarse Visual Spatial Reasoning： 应该是给定图片和 bbox 坐标，模型要预测所有相关的物体坐标和类名？ 
+- Object Counting
+- Object Detection
+
+作者提供了一系列模板：
+
+```text
+Visual Relation Reasoning:
+User: Assist me in finding the relation between <subject> and <object> in the photo.
+Assistant: <relation>.
+
+User: Please locate and categorize all the objects that have a relation of <relation> with
+<subject>.
+Assistant: <object> <category> <object> <category>.
+
+Coarse Visual Spatial Reasoning:
+User: Identify the objects located at <loc> of <object>.
+Assistant: <object> <category> <object> <category>.
+
+Object Counting:
+User: How many objects in the image are of the same category as <object>.
+Assistant: <number>.
+
+Object Detection:
+User: Identify all the objects that fit the same category as <object> and display their
+coordinates.
+Assistant: <object> <object>.
+```
+
+下一个关键问题是如何基于现在有的开源数据集，生成符合上述任务的数据集。可能要等作者开源后会比较清楚。
+
+
+# MiniGPT-5
+
+MiniGPT-5: Interleaved Vision-and-Language Generation via Generative Vokens  
+https://arxiv.org/abs/2310.02239  
+https://github.com/eric-ai-lab/MiniGPT-5    
+
+# INSTRUCTDET
+
+INSTRUCTDET: DIVERSIFYING REFERRING OBJECT DETECTION WITH GENERALIZED INSTRUCTIONS
+https://arxiv.org/pdf/2310.05136.pdf
+
+多样化的 rc 数据集和实现。没开源
+
+
 

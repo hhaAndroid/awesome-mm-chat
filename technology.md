@@ -356,6 +356,7 @@ RuntimeError: mat2 must be a matrix, got 1-D tensor
 解决办法是让 FSDP 和 checkpoint 兼容，目前已经解决。
 
 # DeepSpeed
+
 https://www.deepspeed.ai/getting-started/ 官方文档 
 https://github.com/microsoft/DeepSpeed  
 https://huggingface.co/docs/transformers/main/main_classes/deepspeed
@@ -375,6 +376,50 @@ pip install deepspeed
 ```
 
 安装完成后，你可以使用 `ds_report` 或 `python -m deepspeed.env_report` 命令查看 DeepSpeed 环境报告，以验证你的安装并查看你的机器与哪些 ops 兼容
+
+DeepSpeed 的使用比 FSDP 更简单，因为不需要配置 `auto_wrap_policy`。
+
+以官方的 cifar10 为例，只需要在原来的代码上加上几行代码即可：
+
+1. 初始化
+
+```python
+parameters = filter(lambda p: p.requires_grad, net.parameters())
+args=add_argument()
+
+ # Initialize DeepSpeed to use the following features
+ # 1) Distributed model.
+ # 2) Distributed data loader.
+ # 3) DeepSpeed optimizer.
+ model_engine, optimizer, trainloader, _ = deepspeed.initialize(args=args, model=net, model_parameters=parameters, training_data=trainset)
+```
+
+优化器，调度器等等设置，全部通过 json 文件控制
+
+这个 json 文件内容，可以通过 `--deepspeed_config ds_config.json` 来传入，也可以直接在 initialize 时候传入，例如
+
+```python
+model_engine, optimizer, trainloader, __ = deepspeed.initialize(
+    args=args, model=net, model_parameters=parameters, training_data=trainset, config=ds_config)
+```
+
+2. forward
+
+后续的一些常规代码全部由 deepspeed 接管，例如
+
+```python
+outputs = model_engine(inputs)
+loss = criterion(outputs, labels)
+model_engine.backward(loss)
+model_engine.step()
+```
+
+因此简单来说，deepspeed 的核心就是这个 `ds_config`，用户修改的也都是这个配置文件，代码基本上都是一样的。
+
+配置参数的含义要比较清楚：
+https://www.deepspeed.ai/docs/config-json/  
+https://zhuanlan.zhihu.com/p/650824387
+
 
 # Megatron-LM
 

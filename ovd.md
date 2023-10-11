@@ -396,7 +396,7 @@ https://arxiv.org/pdf/2309.00775.pdf
 # SLIME: SEGMENT LIKE ME
 https://arxiv.org/pdf/2309.03179.pdf 
 
-## MosaicFusion
+# MosaicFusion
 
 MosaicFusion: Diffusion Models as Data Augmenters for Large Vocabulary Instance Segmentation
 https://arxiv.org/pdf/2309.13042.pdf
