@@ -1012,3 +1012,11 @@ Mask Frozen-DETR: High Quality Instance Segmentation with One GPU
 
 https://arxiv.org/pdf/2308.03747.pdf
 
+# FoLR
+
+Focus on Local Regions for Query-based Object Detection
+https://arxiv.org/abs/2310.06470
+
+不需要 encoder，但是并没有和 DINO 等比，性能也没有他高
+
+

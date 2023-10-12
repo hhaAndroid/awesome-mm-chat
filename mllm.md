@@ -1280,4 +1280,14 @@ https://arxiv.org/pdf/2310.05136.pdf
 多样化的 rc 数据集和实现。没开源
 
 
+# CogVLM
+
+智谱清华开源多模态模型。
+
+
+# FERRET
+
+https://arxiv.org/pdf/2310.07704.pdf 
+FERRET: REFER AND GROUND ANYTHING ANYWHERE AT ANY GRANULARITY
+核心
 
