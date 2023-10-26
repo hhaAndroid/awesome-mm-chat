@@ -136,7 +136,6 @@ ICCV2023
 
 https://arxiv.org/abs/2308.01904
 
-
 # SIMPLR
 
 比 ViTDet 更加 plain，只需要单层特征图就行。代码说后续会开源
@@ -149,5 +148,47 @@ SIMPLR: A SIMPLE AND PLAIN TRANSFORMER FOR OBJECT DETECTION AND SEGMENTATION
 https://arxiv.org/pdf/2310.05666.pdf
 Anchor-Intermediate Detector: Decoupling and Coupling Bounding Boxes for Accurate Object Detection
 
+# Rank-DETR 
 
+https://arxiv.org/pdf/2310.08854.pdf
+
+Rank-DETR for High Quality Object Detection
+
+# RichSem-重点
+
+https://arxiv.org/pdf/2310.12152.pdf
+
+Learning from Rich Semantics and Coarse Locations for Long-tailed Object Detection
+
+基于 Detic 和 DINO, 用了CLIP作为辅助，但是是一个闭集算法，不过作者说应该很容易拓展为开集
+
+后续会开源
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/da0f9931-f05d-4db8-a308-5636eba69882"/>
+</div>
+
+输入图片包括2部分：检测数据和额外数据，额外数据不一定是 imagenet-21k，可以是分类数据，也可以是图文对描述数据。
+
+1. 将全部数据都输入到 DINO 里面进行正常的预测，输出定位和分类分支
+2. DINO 上额外扩展一个语义向量分支作为辅助分支，也就是现在同时输出 3 个分支
+3. 对于检测数据来说，对应匹配的 bbox 的语义向量 target 是将该图片经过 CLIP 图像特征提取器后进行 RoIAlign 后的视觉语义特征
+4. 对于图像分类数据，是直接将原图不采用随机裁剪增强后的图片输入到 CLIP 中得到的全局图像特征
+5. 对于其他数据(包括图像分类数据)，将其进行随机裁剪增强后输入给 CLIP 得到局部图像特征
+6. 将所有 LVIS 类别经过 CLIP 文本特征后得到文本特征
+7. 语义分支 loss 采用的是将预测语义向量和目标语义向量进行对比计算，同时将文本特征和视觉语义特征经过对比学习后分布进行 KL 散度计算。并不是直接计算向量的相似性
+
+大概流程应该是这样。
+
+# Query-adaptive DETR for Crowded Pedestrian Detection
+
+https://arxiv.org/pdf/2310.15725.pdf
+
+# Decoupled DETR
+
+Decoupled DETR: Spatially Disentangling Localization and Classification for Improved End-to-End Object Detection
+
+https://arxiv.org/abs/2310.15955
+
+性能很低，而且都没有和现在 SOTA 对比。
 

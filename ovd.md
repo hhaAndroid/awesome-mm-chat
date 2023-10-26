@@ -401,3 +401,22 @@ https://arxiv.org/pdf/2309.03179.pdf
 MosaicFusion: Diffusion Models as Data Augmenters for Large Vocabulary Instance Segmentation
 https://arxiv.org/pdf/2309.13042.pdf
 
+# SILC
+
+SILC: Improving Vision Language Pretraining with Self-Distillation  
+https://arxiv.org/abs/2310.13355
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/489c4ec9-5398-4d12-ab48-e3b31f319de9"/>
+</div>
+
+没有开源
+
+# CoDet
+
+CoDet: Co-Occurrence Guided Region-Word Alignment for Open-Vocabulary Object Detection
+
+https://arxiv.org/pdf/2310.16667.pdf
+
+引入类似 image query 的模式来训练进行图文对齐。
+

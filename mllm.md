@@ -1291,3 +1291,33 @@ https://arxiv.org/pdf/2310.07704.pdf
 FERRET: REFER AND GROUND ANYTHING ANYWHERE AT ANY GRANULARITY
 核心
 
+# AUTOVP
+
+AUTOVP: AN AUTOMATED VISUAL PROMPTING FRAMEWORK AND BENCHMARK
+https://arxiv.org/pdf/2310.08381.pdf
+https://github.com/IBM/AutoVP
+
+对图像分类的多个任务进行自动 prompt 微调。但是有不少没看懂
+
+# PALI-3
+
+PALI-3 VISION LANGUAGE MODELS: SMALLER, FASTER, STRONGER
+
+5b 模型实现强的多模态能力，主要是 vit 部分采用了新的训练策略。
+
+https://arxiv.org/pdf/2310.09199.pdf  
+
+# fuyu-8b 重点
+
+超强的多模态理解能力。
+
+https://www.adept.ai/blog/fuyu-8b
+
+# Woodpecker
+
+Woodpecker: Hallucination Correction for Multimodal Large Language Models
+
+https://arxiv.org/pdf/2310.16045.pdf
+
+一个无需训练，借助多个工具来大幅改善 MLLM 幻觉能力的方案。可以 follow。
+
