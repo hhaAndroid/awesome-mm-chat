@@ -192,3 +192,12 @@ https://arxiv.org/abs/2310.15955
 
 性能很低，而且都没有和现在 SOTA 对比。
 
+#  DAC-DETR
+
+https://github.com/huzhengdongcs/DAC-DETR 
+DAC-DETR: Divide the Attention Layers and Conquer
+
+NeurIPS 2023
+
+
+

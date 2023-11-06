@@ -420,3 +420,62 @@ https://arxiv.org/pdf/2310.16667.pdf
 
 引入类似 image query 的模式来训练进行图文对齐。
 
+# RECOGNIZE ANY REGIONS ×××
+
+https://arxiv.org/pdf/2311.01373.pdf
+https://github.com/Surrey-UPLab/Recognize-Any-Regions
+
+效果不错，看来可以作为一个好的打标签工具,例如在 GLIP 对预测结果进行修正。从表格结果来看
+
+1. v3det 很重要，涉及到很过概念，对 LVIS 有益
+2. GLIP 大问题依然是类别识别不准确，因此在 GLIP 的 proposal 进行再一次类别预测会准确很多。这对于我们很有用
+
+这篇论文叫做识别 any，可以看出是要给 bbox 的任何进行分类的。因此本质上是一个区域分类算法，比 GLIP 性能高那是非常自然的事情，否则也没发布的意义。
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/910c4a43-3e12-432c-a88d-19f009c23894"/>
+</div>
+
+(a) 是通过将PRN检测器的输出和 CLIP 进行对齐来识别类别的，但是 CLIP 输入的图片是 crop 的，没有上下文
+(b) 是直接无脑训练进行区域对齐，训练成本很高
+(c) 是本文提出的办法，训练成本很低
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/d7fb59fc-0c77-41cf-bd14-ba884cc71dd2"/>
+</div>
+
+结果图上述所示，核心在于：
+
+1. SAM 因为非常强，输出的 obj token 非常合理
+2. CLIP 接受的也不是区域而是整图 resize(不知道小物体性能如何？)，然后以 SAM 的输出作为 query 和 CLIP 特征进行交互，进而对所有 token 进行和文本的对比分类即可
+
+只需要训练交互模块，其他都不训练，成本很低。
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/e1bda98a-c926-4798-b5e4-d868b425a751"/>
+</div>
+
+实验的一些现象非常重要，要执行分析。
+
+1. 如果用 GT 框进行区域分类的话，APr 和 RegionCLIP 没有差多少，估计还是训练时候类别概念不够多，但是其余涨了很多，性能很强
+2. GLIP 那几行并没有 proposal 说法，本身是一个端到端模型，直接预测就行，没有用 GLIP-T(B) 作为 proposal，然后在 A 上预测的说法
+3. 这个算法性能很强，如果用 GLIP-T 作为 proposal，性能很强。
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/ff724896-4059-402c-bc52-4cd14a81c9bd"/>
+</div>
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/8e85e857-9fa7-4ab3-8905-06af7bb6f0a4"/>
+</div>
+
+v3det 性能提升那么大？ 有没有可能 v3det 类别涵盖了 LVIS 罕见类？
+
+结果可视化
+
+<div align=center>
+<img src="https://github.com/open-mmlab/mmdetection/assets/17425982/6c5f2c35-66d4-45fc-8d30-aaaa5f54d444"/>
+</div>
+
+可以看出都是GLIP类别错误。
+
