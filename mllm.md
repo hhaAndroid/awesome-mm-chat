@@ -1321,3 +1321,10 @@ https://arxiv.org/pdf/2310.16045.pdf
 
 一个无需训练，借助多个工具来大幅改善 MLLM 幻觉能力的方案。可以 follow。
 
+# LLAVA-PLUS
+
+LLAVA-PLUS: LEARNING TO USE TOOLS FOR CREATING MULTIMODAL AGENTS
+https://arxiv.org/pdf/2311.05437.pdf
+https://llava-vl.github.io/llava-plus/  
+xdecoder/dino/seem/llava/idea 同一批人，明星选手
+

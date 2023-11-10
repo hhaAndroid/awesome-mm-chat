@@ -199,5 +199,24 @@ DAC-DETR: Divide the Attention Layers and Conquer
 
 NeurIPS 2023
 
+# Evaluating Large-Vocabulary Object Detectors: The Devil is in the Details
+
+https://arxiv.org/pdf/2102.01066.pdf
+
+评估大词汇量目标检测器：细节决定成败
+
+
+# DAMEX
+
+DAMEX: Dataset-aware Mixture-of-Experts for visual understanding of mixture-of-datasets
+
+https://arxiv.org/pdf/2311.04894.pdf  
+https://github.com/jinga-lala/DAMEX  
+
+Neurips 2023
+
+
+
+
 
 
