@@ -1328,3 +1328,24 @@ https://arxiv.org/pdf/2311.05437.pdf
 https://llava-vl.github.io/llava-plus/  
 xdecoder/dino/seem/llava/idea 同一批人，明星选手
 
+# To See is to Believe
+To See is to Believe: Prompting GPT-4V for Better Visual Instruction Tuning
+
+https://arxiv.org/pdf/2311.07574.pdf
+
+采用 gpt4v 生成新的指令集，然后直接用到 llava 上面训练，结果有提升。估计后续会有很多类似的生成数据的操作。
+
+# SPHINX
+SPHINX: THE JOINT MIXING OF WEIGHTS, TASKS, AND VISUAL EMBEDDINGS FOR MULTI-MODAL LARGE LANGUAGE MODELS
+https://arxiv.org/pdf/2311.07575.pdf  
+
+一篇思路不太一样的东西
+
+# How to Bridge the Gap between Modalities
+
+综述
+https://arxiv.org/pdf/2311.07594.pdf
+How to Bridge the Gap between Modalities: A Comprehensive Survey on Multimodal Large Language Model
+
+
+

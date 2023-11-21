@@ -38,4 +38,3 @@ https://github.com/RUCAIBox/LLMSurvey
 
 A modular framework for vision & language multimodal research from Facebook AI Research (FAIR)  
 https://github.com/facebookresearch/mmf
-
