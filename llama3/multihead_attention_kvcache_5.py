@@ -124,7 +124,7 @@ if __name__ == '__main__':
     # 不使用 kv cache
     for i in range(total_len):
         # seqlen 可以理解是 prompt 的长度
-        attention_mask = torch.full((seqlen+i, seqlen+i), float("-inf"))
+        attention_mask = torch.full((seqlen + i, seqlen + i), float("-inf"))
         attention_mask = torch.triu(attention_mask, diagonal=1)
         output = mha_attention(x, attention_mask)
         x = torch.cat([x, output[:, -1, :][:, None]], dim=1)
@@ -134,6 +134,9 @@ if __name__ == '__main__':
     x = torch.randn(2, 5, 128)
     mha_attention = MultiheadAttention(128, 4, 4, use_kvcache=True)
     for i in range(total_len):
-        x = mha_attention(x, start_pos=seqlen+i)
+        if seqlen > 1:
+            attention_mask = torch.full((seqlen, seqlen), float("-inf"))
+            attention_mask = torch.triu(attention_mask, diagonal=1)
+        x = mha_attention(x, start_pos=seqlen + i)
         x = x[:, -1, :][:, None]
         print(x.shape)

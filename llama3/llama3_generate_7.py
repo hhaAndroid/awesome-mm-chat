@@ -143,22 +143,22 @@ class Attention(nn.Module):
             input_is_parallel=True
         )  # 聚合输出，维度不变
 
-        # self.cache_k = torch.zeros(
-        #     (
-        #         args.max_batch_size,
-        #         args.max_seq_len,
-        #         self.n_local_kv_heads,
-        #         self.head_dim,
-        #     )
-        # ).cuda()
-        # self.cache_v = torch.zeros(
-        #     (
-        #         args.max_batch_size,
-        #         args.max_seq_len,
-        #         self.n_local_kv_heads,
-        #         self.head_dim,
-        #     )
-        # ).cuda()
+        self.cache_k = torch.zeros(
+            (
+                args.max_batch_size,
+                args.max_seq_len,
+                self.n_local_kv_heads,
+                self.head_dim,
+            )
+        )
+        self.cache_v = torch.zeros(
+            (
+                args.max_batch_size,
+                args.max_seq_len,
+                self.n_local_kv_heads,
+                self.head_dim,
+            )
+        )
 
     def forward(
             self,
@@ -179,17 +179,18 @@ class Attention(nn.Module):
 
         xq, xk = apply_rotary_emb(xq, xk, freqs_cis=freqs_cis)
 
-        # 如果不考虑 kv cache
-        # self.cache_k = self.cache_k.to(xq)
-        # self.cache_v = self.cache_v.to(xq)
+        self.cache_k = self.cache_k.to(xq)
+        self.cache_v = self.cache_v.to(xq)
+        # 把当前的 key/value 放到 cache 中
+        self.cache_k[:bsz, start_pos: start_pos + seqlen] = xk
+        self.cache_v[:bsz, start_pos: start_pos + seqlen] = xv
 
-        # self.cache_k[:bsz, start_pos: start_pos + seqlen] = xk
-        # self.cache_v[:bsz, start_pos: start_pos + seqlen] = xv
+        # 把历史上所有的 key/value 都拿出来用
+        keys = self.cache_k[:bsz, : start_pos + seqlen]
+        values = self.cache_v[:bsz, : start_pos + seqlen]
 
-        # keys = self.cache_k[:bsz, : start_pos + seqlen]
-        # values = self.cache_v[:bsz, : start_pos + seqlen]
-        keys = xk
-        values = xv
+        # 注意，query 的维度是 (b,1,d)，而 k/v 的维度是 (b,n,d)
+        # 注意力和输出维度都变小了很多，所以计算量也减少了很多，但是存储空间多了
 
         # repeat k/v heads if n_kv_heads < n_heads
         # 如果 key/value head 数小于 query head 数，那么需要重复 k/v n_rep 次
@@ -307,26 +308,16 @@ class Transformer(nn.Module):
     # start_pos 是生成时候配合 key-value cache 使用的
     @torch.no_grad()
     def forward(self, tokens: torch.Tensor, start_pos: int):
-        _bsz, seqlen = tokens.shape  # b,n
-        h = self.tok_embeddings(tokens)  # b,n,96
-
-        # 预计算
+        _bsz, seqlen = tokens.shape
+        h = self.tok_embeddings(tokens)
         self.freqs_cis = self.freqs_cis.to(h.device)
-        freqs_cis = self.freqs_cis[start_pos: start_pos + seqlen]
+        # 获取真实位置的值
+        freqs_cis = self.freqs_cis[start_pos:start_pos + seqlen]
 
         mask = None
-        if seqlen > 1:  # 下三角矩阵，下三角是 0，上三角是 -inf
+        if seqlen > 1:  # prompt 时刻，也就是第一次运行才有可能会运行
             mask = torch.full((seqlen, seqlen), float("-inf"), device=tokens.device)
-
             mask = torch.triu(mask, diagonal=1)
-
-            # When performing key-value caching, we compute the attention scores
-            # only for the new sequence. Thus, the matrix of scores is of size
-            # (seqlen, cache_len + seqlen), and the only masked entries are (i, j) for
-            # j > cache_len + i, since row i corresponds to token cache_len + i.
-            mask = torch.hstack(
-                [torch.zeros((seqlen, start_pos), device=tokens.device), mask]
-            ).type_as(h)
 
         for layer in self.layers:
             h = layer(h, start_pos, freqs_cis, mask)
@@ -359,19 +350,42 @@ def demo1(device):
     set_random_seed(42)
     transformer = Transformer(ModelArgs())
     set_random_seed(42)
-    input = torch.randint(10, 400, (3, 4))
-    output = transformer(input, start_pos=0)
-    print(f'\n---rank: {get_rank()}----', output.shape, output.mean())
+
+    seqlen = 5  # 初始序列长度，类似 prompt
+    inputs = torch.randint(10, 400, (3, seqlen))
+    total_len = 15  # 假设最多预测 15 个 token
+
+    prev_pos = 0
+    for cur_pos in range(seqlen, total_len):
+        # 第一次运行时候，要将 prompt 部分全部输入。内部要进行 mask 处理
+        # 第二次开始只需要输入预测的 token id 即可
+        logits = transformer(inputs[:, prev_pos:cur_pos], prev_pos)
+        next_token = torch.argmax(logits[:, -1], dim=-1)
+        print(f'\n----- rank {get_rank()}----', logits.shape)
+        inputs = torch.cat([inputs, next_token[:, None]], dim=1)
+        prev_pos = cur_pos
 
 
 if __name__ == '__main__':
     set_random_seed(42)
     transformer = Transformer(ModelArgs())
     set_random_seed(42)
-    input = torch.randint(10, 400, (3, 4))
-    output = transformer(input, start_pos=0)
-    print(output.shape, output.mean())
 
+    seqlen = 5  # 初始序列长度，类似 prompt
+    inputs = torch.randint(10, 400, (3, seqlen))
+    total_len = 15  # 假设最多预测 15 个 token
+
+    prev_pos = 0
+    for cur_pos in range(seqlen, total_len):
+        # 第一次运行时候，要将 prompt 部分全部输入,内部要进行 mask 处理
+        # 第二次开始只需要输入预测的 token id 即可
+        logits = transformer(inputs[:, prev_pos:cur_pos], prev_pos)
+        next_token = torch.argmax(logits[:, -1], dim=-1)
+        print(logits.shape)
+        inputs = torch.cat([inputs, next_token[:, None]], dim=1)
+        prev_pos = cur_pos
+
+    print('============================')
     functions = [demo1]
     world_size = 2
     backend = 'gloo'
