@@ -1,5 +1,74 @@
 # Tokenizer
 
+## 如何生成 llama3 相同的 tokenzier 文件结构
+
+https://huggingface.co/meta-llama/Meta-Llama-3-8B/tree/main
+
+- special_tokens_map.json
+- tokenizer_config.json
+- tokenizer.json
+
+详情见 `1_from_llama3.py` 文件
+
+## 如何生成 qwen2 相同的 tokenzier 文件结构
+
+- merges.txt
+- vocab.json
+- tokenizer_config.json
+- tokenizer.json
+
+详情见 `2_from_qwen2.py` 文件
+
+## 如何生成 internlm2 相同的 tokenzier 文件结构
+
+- special_tokens_map.json
+- tokenizer_config.json
+- tokenizer.json
+- tokenizer.model
+- tokenization_internlm2.py
+- tokenization_internlm2_fast.py
+
+详情见 `3_from_internlm2.py` 文件
+
+## 说明
+现在主流生成 tokenizer 方法的主要是 3 个
+
+- huggingface 的 tokenizer 库
+- SentencePiece 库
+- openai 的 tiktoken 库
+
+第三个库没有用过，不过从目前来看，前两个库结果都可以相互转换。如果是类似 llama3 直接用 huggingface 的 tokenizer 库训练的，那么其实非常简单，不用做啥转换，
+如果是 SentencePiece 库训练的，那么需要做一次转换，写法非常灵活，能满足需求就行，其实很多文件可能都不是必要的，只是为了方面查看。
+
+注意： vocab size 和模型 embeding size 其实不要求完全一致。
+
+- 假设 vocab size 长度大于 embedding size，那么说明可能是词表里面预留了很多 UNK token id 方便后面扩展。正常情况下这些 id 不会输入到模型中，在没有扩展情况下
+- 大部分情况下都是 vocab size 小于 embedding size，也就是说很多 embedding 位置没有用到，是为了扩充词表而不改变 embedding 用的
+- 各种情况都可能出现，并没有统一范式
+
+
+## 从头训练 tokenizer
+
+https://huggingface.co/docs/tokenizers/index
+https://huggingface.co/docs/tokenizers/pipeline
+
+运行顺序：
+
+- normalization 对输入字符进行前处理，例如去除奇怪字符，全部小写啥的
+- pre-tokenization 预分词是将文本拆分成更小的对象的过程,这些对象为最终训练得到的词元设定了一个上限。一个好的思路是,预分词器会将你的文本拆分成"单词",然后你最终得到的词元将是这些单词的部分。
+- model
+- post-processing 后处理是分词流程的最后一步,在返回编码之前对其进行任何额外的转换,比如添加潜在的特殊标记。
+
+
+normalization：
+
+规范化,简而言之,就是一组你应用于原始字符串的操作,以使其变得更干净。常见的操作包括去除空白字符、删除带重音的字符或将所有文本转换为小写。如果你熟悉 Unicode 规范化,它也是大多数分词器中非常常见的规范化操作。
+
+在 🤗 Tokenizers 库中,每个规范化操作都由一个 Normalizer 来表示,你可以通过使用 normalizers.Sequence 来组合多个这样的操作。
+
+解码过程是： 将 ID 转换回词元(使用分词器的词汇表),然后删除所有特殊标记,最后用空格连接这些词元:
+
+
 ## 參考
 
 https://huggingface.co/learn/nlp-course/chapter6/1?fw=pt
@@ -16,7 +85,7 @@ https://zhuanlan.zhihu.com/p/656115828
 Tokenizer 中文称为分词器，为何需要这个东西？原因是现在的模型还不能直接将人类字符串语言直接输入到模型中进行学习，需要一个编码转换过程。
 因此 Tokenizer 作用就是将字符序列转化为数字序列，对应模型的输入。这个转换过程有非常多写法，但是哪一种转换范式才是我们需要的？
 
-一个好的 tokenizer 能够将输入文本准确的切分为合适的单元。一个训练好的 tokenizer 会输出一个词汇表，代表切分后的字符单元和id 的对应关系。
+一个好的 tokenizer 能够将输入文本准确的切分为合适的单元。一个训练好的 tokenizer 会输出一个词汇表，代表切分后的字符单元和 id 的对应关系。
 在使用时候，输入任何一句话，都会按照之前确定的切分规则，切分为单元，然后查表得到数字 id，这样就把一句话转换为一维向量。
 
 一个好的 tokenizer 应该满足：
@@ -74,7 +143,7 @@ GPT 系列用的就是这个，最常用。
 
 它的目标是找到一种最优的字符组合方式，使得整个数据集中不同单词的字符组合尽可能的少。这种算法最初被设计用于字节级的数据压缩，后来被应用于NLP。
 
-BPE获得Subword的步骤如下：
+BPE获得 Subword 的步骤如下：
 
 - 准备足够大的训练语料，并确定期望的Subword词表大小；
 - 将单词拆分为成最小单元。比如英文中26个字母加上各种符号，这些作为初始词表；
@@ -123,15 +192,6 @@ chatgpt等部分大语言模型使用的就是这种tokenize方式，所以对�
 
 优点： 不会出现 OOV 的情况。不管是怎样的汉字，只要可以用 unicode 表示，就都会存在于词表中。
 缺点： 增加了学习的成本，对于中文还需要学习 unicode 的组合，会导致模型在训练不够充足的时候，会输出一些乱码（不合法的 unicode 序列）。
-
-
-
-## WordPiece 分词算法
-
-## SentencePiece 分词工具包和分词算法
-
-这个名词即使一个常用的分词工具包，包括了常用的分词算法，也是一种分词算法。
-
 
 ## 词汇扩充
 
