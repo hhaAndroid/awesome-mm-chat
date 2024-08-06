@@ -307,7 +307,7 @@ class Transformer(nn.Module):
 
     # start_pos 是生成时候配合 key-value cache 使用的
     @torch.no_grad()
-    def forward(self, tokens: torch.Tensor):
+    def forward(self, tokens: torch.Tensor, start_pos=0):
         _bsz, seqlen = tokens.shape  # b,n
         h = self.tok_embeddings(tokens)  # b,n,96
 
