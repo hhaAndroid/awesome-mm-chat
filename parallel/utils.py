@@ -29,6 +29,7 @@ def init_process(rank, world_size, functions, backend='gloo'):
 _TP_GROUP = None
 _DP_GROUP = None
 _SP_GROUP = None
+_PP_GROUP = None
 
 
 def initialize_tp_dp_group(world_size, tp, dp, backend):
@@ -75,6 +76,30 @@ def initialize_sp_dp_group(world_size, sp, dp, backend):
         # group = groups[k, :].tolist()
         if k == found[0]:
             _SP_GROUP = group
+
+
+def initialize_pp_dp_group(world_size, pp, dp, backend):
+    global _PP_GROUP, _DP_GROUP
+
+    groups = torch.LongTensor(range(world_size)).reshape(dp, pp)
+    found = torch.where(groups == get_rank())
+    assert all(len(x) == 1 for x in found)
+    found = [x[0] for x in found]
+
+    # DP
+    for k in range(pp):
+        group = torch.distributed.new_group(groups[:, k].tolist(), backend=backend)
+        # group = groups[:, k].tolist()
+        if k == found[1]:
+            _DP_GROUP = group
+
+    # PP
+    for k in range(dp):
+        group = torch.distributed.new_group(groups[k, :].tolist(), backend=backend)
+        # group = groups[k, :].tolist()
+        if k == found[0]:
+            _PP_GROUP = group
+
 
 def _all_to_all(
         input: Tensor,
