@@ -9,7 +9,16 @@
 - PP
 
 TODO
+- Ring Attention
+- Context Parallelism
 - DDP+PP
 - DDP+TP+PP
 - EP
 - FSDP
+
+# 矩阵乘法分块计算
+
+- 矩阵分块计算
+- softmax
+- online softmax
+- parallel online softmax
