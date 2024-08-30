@@ -1,52 +1,40 @@
 import numpy as np
 import math
+import torch
 
-def matrix_tie():
-    # 创建两个 4x4 矩阵
-    A = np.array([[1, 2, 3, 4],
-                  [5, 6, 7, 8],
-                  [9, 10, 11, 12],
-                  [13, 14, 15, 16]])
 
-    B = np.array([[16, 15, 14, 13],
-                  [12, 11, 10, 9],
-                  [8, 7, 6, 5],
-                  [4, 3, 2, 1]])
+def qk_tie():
+    import torch
 
-    # 不分块计算
-    C = np.dot(A, B)
-    print("不分块计算结果:\n", C)
-
-    """
-    A= [[ A1, A2]
-        [ A3, A4]
-        ]
-    B= [[ B1, B2]
-        [ B3, B4]
-        ]    
-
-    C= [[ A1*B1 + A2*B3, A1*B2 + A2*B4]
-        [ A3*B1 + A4*B3, A3*B2 + A4*B4]
-     ]
-    在分块前只需要计算一次，分块为 2x2 后，需要 4x2 次乘法     
-    """
-
-    # 定义矩阵分块大小
-    block_size = 2
-
-    # 初始化结果矩阵
-    C_blocked = np.zeros((A.shape[0], B.shape[1]))
+    q = torch.arange(20 * 5).reshape(20, 5)
+    k = torch.arange(16 * 5).reshape(16, 5)
+    c = torch.matmul(q, k.T)
+    print(c)  # (20, 16)
+    print(c.float().mean())
 
     # 分块计算
-    for i in range(0, A.shape[0], block_size):
-        for j in range(0, B.shape[1], block_size):
-            for k in range(0, A.shape[1], block_size):
-                # 可以并行算，最后相加
-                A_block = A[i:i + block_size, k:k + block_size]
-                B_block = B[k:k + block_size, j:j + block_size]
-                C_blocked[i:i + block_size, j:j + block_size] += np.dot(A_block, B_block)
+    q_bucket_size = 2
+    k_bucket_size = 4
 
-    print("分块计算结果:\n", C_blocked)
+    q_chunks = q.split(q_bucket_size, dim=0)
+    k_chunks = k.split(k_bucket_size, dim=0)
+    print(len(q_chunks), len(k_chunks))
+
+    # (20, 16)
+    out = []
+    for q_index, q_chunk in enumerate(q_chunks):  # 遍历 q 分块
+        weights = []
+        for k_index, k_chunk in enumerate(k_chunks):  # 内部遍历 k 分块
+            # (2,5) * (5,4) -> (2, 4)
+            weight = torch.matmul(q_chunk, k_chunk.T)
+            weights.append(weight)
+        # 此时就得到每个 q 相比所有 k 的值
+        all_weights = torch.cat(weights, dim=-1)
+        out.append(all_weights)
+    # 此时就得到所有 q 相比所有 k 的值
+    out = torch.cat(out, dim=0)
+    print(out)  # (20, 16)
+    print(out.float().mean())
 
 
 def numpy_softmax():
@@ -101,7 +89,7 @@ def python_online_softmax():
     # 只有两次 for 循环
     for logit in logits:
         max_value_ = max(pre_max_value, logit)
-        sum_exp = sum_exp*math.exp(pre_max_value - max_value_) + math.exp(logit - max_value_)
+        sum_exp = sum_exp * math.exp(pre_max_value - max_value_) + math.exp(logit - max_value_)
         pre_max_value = max_value_
 
     # 计算每个元素
@@ -119,24 +107,28 @@ def python_online_softmax_parallel():
         d = d0 * np.exp(m0 - m) + d1 * np.exp(m1 - m)
         return m, d
 
-    # 上述做法虽然少了一次 for，但是必须串行运行，无法真正并行
-    # 假设下面代码是并行计算，一共 2 张卡，每张卡计算一半数据
-    # 卡0-模拟
-    pre_max_value1 = -math.inf
-    sum_exp1 = 0
-    for logit in logits[0:2]:
-        pre_max_value1, sum_exp1 = online_softmax_update(pre_max_value1, sum_exp1, logit, 1)
+    # # 上述做法虽然少了一次 for，但是必须串行运行，无法真正并行
+    # # 假设下面代码是并行计算，一共 2 张卡，每张卡计算一半数据
 
-    # 卡1-模拟
-    pre_max_value2 = -math.inf
-    sum_exp2 = 0
-    for logit in logits[2:]:
-        pre_max_value2, sum_exp2 = online_softmax_update(pre_max_value2, sum_exp2, logit, 1)
+    # 假设切分为 2 段独立计算,每块可以独立算
+    chunk_size = 2
+    exp_weights = []
+    weight_maxes = []
+    for i in range(chunk_size):
+        pre_max_value = -math.inf
+        sum_exp = 0
+        # 每段单独算
+        for logit in logits[i * chunk_size: i * chunk_size + chunk_size]:
+            pre_max_value, sum_exp = online_softmax_update(pre_max_value, sum_exp, logit, 1)
+        exp_weights.append(sum_exp)
+        weight_maxes.append(pre_max_value)
 
-    # 合并结果
-    # 假设一共切分为 8 份，那么每张卡需要计算 2*3=8 即一共计算 3+1 次得到最终的 pre_max_value, sum_exp
-    # 但是相比于之前单卡要计算 8 次，还是少很多的，并且显存大幅减少
-    pre_max_value, sum_exp = online_softmax_update(pre_max_value1, sum_exp1, pre_max_value2, sum_exp2)
+    # 然后在所有卡上面都运行这个代码，保证所有卡的结果一致
+    pre_max_value = -math.inf
+    sum_exp = 0
+    # 逐渐合并得到最终值
+    for i in range(len(exp_weights)):
+        pre_max_value, sum_exp = online_softmax_update(pre_max_value, sum_exp, weight_maxes[i], exp_weights[i])
 
     # 计算每个元素，这个自然的并行
     for logit in logits:
@@ -145,9 +137,137 @@ def python_online_softmax_parallel():
     print("Softmax 输出:", softmax_output)
 
 
+# 类似 memory efficient attention
+# 相比于上面代码，
+# 1. 引入了实际需要的 qk 分块计算
+# 2. 引入了 online softmax parallel 矩阵计算(之前是 for)
+def torch_online_qk_softmax_parallel():
+    q = torch.randn((20, 5))
+    k = torch.randn((16, 5))
+    c = torch.matmul(q, k.T)
+    c = torch.softmax(c, dim=-1)
+    print(c)
+    print(c.mean())
+
+    # 采用矩阵分块+ online softmax
+    q_bucket_size = 2
+    k_bucket_size = 4
+
+    q_chunks = q.split(q_bucket_size, dim=0)
+    k_chunks = k.split(k_bucket_size, dim=0)
+    print(len(q_chunks), len(k_chunks))
+
+    # (20, 16)
+    out = []
+    for q_index, q_chunk in enumerate(q_chunks):  # 遍历 q 分块
+        # 整个for 循环内部对应上述的一次 online_softmax_update
+        exp_weights = []
+        weight_maxes = []
+        # 这个 for 是可以并行计算的
+        # q_i 和 k_0,k_1,k_2,k_3 可以分别放到不同 kernel 上面并行算，或者放到不同卡上面算
+        for k_index, k_chunk in enumerate(k_chunks):  # 内部遍历 k 分块
+            # (2,5) * (5,4) -> (2, 4)
+            weight = torch.matmul(q_chunk, k_chunk.T)
+
+            weight_max = weight.amax(dim=-1, keepdim=True)
+            weight = weight - weight_max  # safe softmax
+            exp_weight = weight.exp()
+            exp_weights.append(exp_weight)
+            weight_maxes.append(weight_max.repeat(1, weight.shape[-1]))
+
+        # 这种做法的弊端是： 会占用大量显存，因为 exp_weights 的维度是 (q_chunk, k), k 是整个序列都在
+        # 好在实际上我们并不实际上需要 exp_weights，只需要最终的 v 输出，因此有后面的做法
+        # 合并当前结果
+        # 此时就得到每个 q 相比所有 k 的值
+        weight_maxes = torch.cat(weight_maxes, dim=-1)
+        exp_weights = torch.cat(exp_weights, dim=-1)
+
+        global_max = weight_maxes.amax(dim=-1, keepdim=True)
+        renorm_factor = (weight_maxes - global_max).exp()
+        # 矩阵算法
+        exp_weights = exp_weights * renorm_factor
+
+        exp_weights = exp_weights / exp_weights.sum(dim=-1, keepdim=True)
+        out.append(exp_weights)
+    # 此时就得到所有 q 相比所有 k 的值
+    out = torch.cat(out, dim=0)
+    print(out)  # (20, 16)
+    print(out.float().mean())
+    assert torch.allclose(c, out)
+
+
+# https://zhuanlan.zhihu.com/p/668888063
+# https://github.com/lucidrains/memory-efficient-attention-pytorch
+# 在加入 v 后算法就有比较大的不同，因为我们要的是最终的 v 而不是之前的 softmax 输出
+# 所以实现上是不同的
+def torch_online_qkv_attention_parallel():
+    q = torch.randn((20, 5))
+    k = torch.randn((16, 5))
+    v = torch.randn((16, 5))
+    c = torch.matmul(q, k.T)
+    weight = torch.softmax(c, dim=-1)
+    value = torch.matmul(weight, v)
+    print(value)
+    print(value.mean())
+
+    # 采用矩阵分块+ online softmax
+    q_bucket_size = 2
+    k_bucket_size = 4
+
+    q_chunks = q.split(q_bucket_size, dim=0)
+    k_chunks = k.split(k_bucket_size, dim=0)
+    v_chunks = v.split(k_bucket_size, dim=0)
+    print(len(q_chunks), len(k_chunks), len(v_chunks))
+
+    # (20, 16)
+    out = []
+    for q_index, q_chunk in enumerate(q_chunks):  # 遍历 q 分块
+        # 整个for 循环内部对应上述的一次 online_softmax_update
+        exp_weights = []
+        weight_maxes = []
+        _values = []
+        # 这个 for 是可以并行计算的
+        # q_i 和 k_0,k_1,k_2,k_3 可以分别放到不同 kernel 上面并行算，或者放到不同卡上面算
+        for k_index, (k_chunk, v_chunk) in enumerate(zip(k_chunks, v_chunks)):  # 内部遍历 k 分块
+            # (2,5) * (5,4) -> (2, 4)
+            weight = torch.matmul(q_chunk, k_chunk.T)
+
+            weight_max = weight.amax(dim=-1, keepdim=True)
+            weight = weight - weight_max  # safe softmax
+            exp_weight = weight.exp()
+            _value = torch.matmul(exp_weight, v_chunk)
+            exp_weights.append(exp_weight.sum(dim=-1))  # 注意这里
+            _values.append(_value)
+            weight_maxes.append(weight_max.squeeze(dim=-1))
+
+        # 合并当前结果
+        # 此时就得到每个 q 相比所有 k 的值
+        weight_maxes = torch.stack(weight_maxes, dim=-1)
+        _values = torch.stack(_values, dim=-1)
+        exp_weights = torch.stack(exp_weights, dim=-1)
+
+        global_max = weight_maxes.amax(dim=-1, keepdim=True)
+        renorm_factor = (weight_maxes - global_max).exp()
+
+        exp_weights = exp_weights * renorm_factor
+        _values = _values * renorm_factor.unsqueeze(dim=-2)
+
+        all_values = _values.sum(dim=-1)
+        all_weights = exp_weights.sum(dim=-1)
+
+        normalized_values = all_values / (all_weights[:, None] + 1e-8)
+        out.append(normalized_values)
+    out = torch.cat(out, dim=0)
+    print(out)  # (20, 5)
+    print(out.float().mean())
+    assert torch.allclose(value, out, atol=1e-6)
+
+
 if __name__ == '__main__':
-    matrix_tie()
+    qk_tie()
     numpy_softmax()
     python_softmax()
     python_online_softmax()
     python_online_softmax_parallel()
+    torch_online_qk_softmax_parallel()
+    torch_online_qkv_attention_parallel()

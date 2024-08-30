@@ -7,14 +7,15 @@
 - SP
 - DDP+SP
 - PP
+- Ring Attention： 分布式版本的 Flash Attention
 
 TODO
-- Ring Attention
 - Context Parallelism
 - DDP+PP
 - DDP+TP+PP
 - EP
 - FSDP
+- Flash Attention 原理版
 
 # 矩阵乘法分块计算
 
@@ -22,3 +23,4 @@ TODO
 - softmax
 - online softmax
 - parallel online softmax
+- online_qkv_attention_parallel
