@@ -142,6 +142,7 @@ def multi_demo(*args, **kwargs):
         print(out.float().mean())
 
 
+# https://coconut-mode.com/posts/ring-attention/
 if __name__ == '__main__':
     # 单卡，作为对比
     single_demo()
