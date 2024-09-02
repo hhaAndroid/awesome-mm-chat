@@ -53,7 +53,7 @@ def prepare_kv_double_buffer(k, v):
 
 
 # # https://github.com/66RING/ring-attention-pytorch/blob/main/ring_attention.py
-# 如果想深入理解这个代码，需要先看懂 baisc.py 内部代码
+# 如果想深入理解这个代码，需要先看懂 basic.py 内部代码
 def multi_demo(*args, **kwargs):
     set_random_seed(42)
     q = torch.randn((20, 5))

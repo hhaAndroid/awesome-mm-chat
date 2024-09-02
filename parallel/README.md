@@ -23,4 +23,6 @@ TODO
 - softmax
 - online softmax
 - parallel online softmax
+- python_qkv_online_softmax
+- torch_qkv_chunk_online_softmax_one_pass
 - online_qkv_attention_parallel

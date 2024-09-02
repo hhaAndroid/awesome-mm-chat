@@ -1,6 +1,7 @@
 import numpy as np
 import math
 import torch
+from mmengine.runner import set_random_seed
 
 
 def qk_tie():
@@ -76,6 +77,7 @@ def python_softmax():
     print("Softmax 输出:", softmax_output)
 
 
+# https://zhuanlan.zhihu.com/p/668888063
 # Safe softmax with online normalizer calculation
 def python_online_softmax():
     logits = [2.0, 1.0, 0.1, 0.8]
@@ -83,12 +85,13 @@ def python_online_softmax():
     pre_max_value = -math.inf
     sum_exp = 0
 
-    # 上述做法虽然可以解决问题，但是有 3次 for 训练，也就是 logits 要 load 3 次，如果可以减少 for 次数那么就更好了
+    # 上述做法虽然可以解决问题，但是有 3次 for 训练，也就是 logins 要 load 3 次，如果可以减少 for 次数那么就更好了
     # online 做法就可以变成 2 次，采用了类似在线方式
 
     # 只有两次 for 循环
     for logit in logits:
         max_value_ = max(pre_max_value, logit)
+        # https://zhuanlan.zhihu.com/p/668888063 有推导，迭代形式来源
         sum_exp = sum_exp * math.exp(pre_max_value - max_value_) + math.exp(logit - max_value_)
         pre_max_value = max_value_
 
@@ -96,6 +99,154 @@ def python_online_softmax():
     for logit in logits:
         softmax_output.append(np.exp(logit - pre_max_value) / sum_exp)
     print("Softmax 输出:", softmax_output)
+
+
+# Multi-Pass 版本 FlashAttention
+def python_qkv_online_softmax():
+    set_random_seed(42)
+    q = torch.randn((20, 5))
+    k = torch.randn((16, 5))
+    v = torch.randn((16, 5))
+    c = torch.matmul(q, k.T)
+    weight = torch.softmax(c, dim=-1)
+    value = torch.matmul(weight, v)
+    print(value)
+    print(value.mean())
+
+    # 每一行是完全独立的，可以 kernel 并行计算
+    o = torch.zeros(value.shape)
+    for k_index in range(q.shape[0]):  # 遍历 q
+        # q: 1x5 k 16x5 v 1x5
+        # 1x5 * 5x16 -> 1x16(softmax 值)
+        # 16x1 * 1x5(v) -> 16x5 -> sum -> 1x5
+        x_s = []
+        pre_max_value = -math.inf
+        d_i = 0
+        for i in range(k.shape[0]):  # 遍历 k
+            # 1x5 * 5x1 -> 1x1 -> 1
+            x_i = torch.matmul(q[k_index:k_index + 1, :], (k[i:i + 1, :]).T).squeeze()
+            max_value_ = max(pre_max_value, x_i)
+            d_i = d_i * math.exp(pre_max_value - max_value_) + math.exp(x_i - max_value_)
+            pre_max_value = max_value_
+            x_s.append(x_i)
+
+        # 1x5
+        o_i = torch.zeros((1, v.shape[1]))
+        for i in range(k.shape[0]):  # 遍历 k
+            a_i = math.exp(x_s[i] - pre_max_value) / d_i  # softmax 值
+            o_i += a_i * v[i:i + 1, :]
+        o[k_index, :] = o_i
+
+    print(o)
+    print(o.mean())
+    assert torch.allclose(value, o, atol=1e-6)
+
+
+# https://zhuanlan.zhihu.com/p/668888063
+# flash attention v1 核心
+def python_qkv_online_softmax_one_pass():
+    set_random_seed(42)
+    q = torch.randn((20, 5))
+    k = torch.randn((16, 5))
+    v = torch.randn((16, 5))
+    c = torch.matmul(q, k.T)
+    weight = torch.softmax(c, dim=-1)
+    value = torch.matmul(weight, v)
+    print(value)
+    print(value.mean())
+
+    o = torch.zeros(value.shape)
+    for k_index in range(q.shape[0]):  # 遍历 q
+        # q: 1x5 k 16x5 v 1x5
+        pre_max_value = -math.inf
+        d_i_pre = 0
+        o_i = o[k_index:k_index + 1, :]
+        # 现在只有 1 个 for 循环了
+        for i in range(k.shape[0]):  # 遍历 k
+            # 1x5 * 5x1 -> 1x1 -> 1
+            x_i = torch.matmul(q[k_index:k_index + 1, :], (k[i:i + 1, :]).T).squeeze()
+            max_value_ = max(pre_max_value, x_i)
+            d_i = d_i_pre * math.exp(pre_max_value - max_value_) + math.exp(x_i - max_value_)
+            o_i = o_i * (d_i_pre * math.exp(pre_max_value - max_value_) / d_i) + \
+                math.exp(x_i - max_value_) / d_i * v[i:i + 1, :]
+
+            pre_max_value = max_value_
+            d_i_pre = d_i
+
+        o[k_index, :] = o_i
+
+    print(o)
+    print(o.mean())
+    assert torch.allclose(value, o, atol=1e-6)
+
+
+# https://zhuanlan.zhihu.com/p/663932651
+# https://zhuanlan.zhihu.com/p/668888063
+# flash attention v1 核心 + 分块计算，提高效率
+def torch_qkv_chunk_online_softmax_one_pass():
+    set_random_seed(42)
+    Q = torch.randn((20, 5))
+    K = torch.randn((16, 5))
+    V = torch.randn((16, 5))
+    c = torch.matmul(Q, K.T)
+    weight = torch.softmax(c, dim=-1)
+    value = torch.matmul(weight, V)
+    print(value)
+    print(value.mean())
+
+    # qkv 都分块计算,每块的长度是 chunk_size
+    chunk_size = 4
+
+    NEG_INF = -1e10  # -infinity
+    EPSILON = 1e-10
+    O = torch.zeros_like(Q, requires_grad=True)
+    l = torch.zeros(Q.shape[:-1])[..., None]
+    m = torch.ones(Q.shape[:-1])[..., None] * NEG_INF
+
+    Q_BLOCKS = torch.split(Q, chunk_size, dim=0)
+    K_BLOCKS = torch.split(K, chunk_size, dim=0)
+    V_BLOCKS = torch.split(V, chunk_size, dim=0)
+    O_BLOCKS = list(torch.split(O, chunk_size, dim=0))
+    l_BLOCKS = list(torch.split(l, chunk_size, dim=0))
+    m_BLOCKS = list(torch.split(m, chunk_size, dim=0))
+
+    Tr = Q.shape[0] // chunk_size
+    Tc = K.shape[0] // chunk_size
+    for j in range(Tc):  # 为何变成 K 开始遍历？
+        Kj = K_BLOCKS[j]
+        Vj = V_BLOCKS[j]
+        for i in range(Tr):
+            Qi = Q_BLOCKS[i]
+            Oi = O_BLOCKS[i]
+            li = l_BLOCKS[i]
+            mi = m_BLOCKS[i]
+
+            S_ij = torch.einsum('... i d, ... j d -> ... i j', Qi, Kj)
+            m_block_ij, _ = torch.max(S_ij, dim=-1, keepdims=True)
+            P_ij = torch.exp(S_ij - m_block_ij)
+            l_block_ij = torch.sum(P_ij, dim=-1, keepdims=True) + EPSILON
+            P_ij_Vj = torch.einsum('... i j, ... j d -> ... i d', P_ij, Vj)
+
+            mi_new = torch.maximum(m_block_ij, mi)
+
+            li_new = torch.exp(mi - mi_new) * li \
+                     + torch.exp(m_block_ij - mi_new) * l_block_ij
+
+            O_BLOCKS[i] = (li / li_new) * torch.exp(mi - mi_new) * Oi \
+                          + (torch.exp(m_block_ij - mi_new) / li_new) * P_ij_Vj
+            # print(f'-----------Attn : Q{i}xK{j}---------')
+            #         print(O_BLOCKS[i].shape)
+            print(O_BLOCKS[0])
+            print(O_BLOCKS[1])
+            print('\n')
+
+            l_BLOCKS[i] = li_new
+            m_BLOCKS[i] = mi_new
+
+    O = torch.cat(O_BLOCKS, dim=0)
+    print(O)
+    print(O.mean())
+    assert torch.allclose(value, O, atol=1e-6)
 
 
 def python_online_softmax_parallel():
@@ -264,10 +415,13 @@ def torch_online_qkv_attention_parallel():
 
 
 if __name__ == '__main__':
-    qk_tie()
-    numpy_softmax()
-    python_softmax()
-    python_online_softmax()
-    python_online_softmax_parallel()
-    torch_online_qk_softmax_parallel()
-    torch_online_qkv_attention_parallel()
+    # qk_tie()
+    # numpy_softmax()
+    # python_softmax()
+    # python_online_softmax()
+    # python_qkv_online_softmax()
+    python_qkv_online_softmax_one_pass()
+    torch_qkv_chunk_online_softmax_one_pass()
+    # python_online_softmax_parallel()
+    # torch_online_qk_softmax_parallel()
+    # torch_online_qkv_attention_parallel()
