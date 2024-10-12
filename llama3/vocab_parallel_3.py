@@ -63,6 +63,8 @@ class VocabParallelEmbedding(nn.Module):
     values are kept.
 
     沿着 vocab_size 方向进行 split, 这样方便计算，每个索引都可以获取完整的 embedding.
+    为何最后需要 all-reduce 因为有些rank 获取的 embedding 是 0,但是实际上不应该是0
+    all-reduce-sum 可以保证一致
     """
 
     def __init__(
