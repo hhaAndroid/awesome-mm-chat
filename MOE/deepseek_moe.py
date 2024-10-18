@@ -119,11 +119,11 @@ class MoEGate(nn.Module):
         bsz, seq_len, h = hidden_states.shape
         ### compute gating score
         hidden_states = hidden_states.view(-1, h)
-        logits = F.linear(hidden_states, self.weight, None)
+        logits = F.linear(hidden_states, self.weight, None)  # n,n_routed_experts
 
         scores = logits.softmax(dim=-1)
 
-        ### select top-k experts
+        ### select top-k experts   n,top_k
         topk_weight, topk_idx = torch.topk(scores, k=self.top_k, dim=-1, sorted=False)
 
         ### norm gate to sum 1
@@ -200,7 +200,7 @@ class DeepseekMoE(nn.Module):
     def forward(self, hidden_states):
         identity = hidden_states
         orig_shape = hidden_states.shape
-        topk_idx, topk_weight, aux_loss = self.gate(hidden_states)
+        topk_idx, topk_weight, aux_loss = self.gate(hidden_states)  # n,top-k
         hidden_states = hidden_states.view(-1, hidden_states.shape[-1])
         flat_topk_idx = topk_idx.view(-1)
         if self.training:
@@ -224,10 +224,10 @@ class DeepseekMoE(nn.Module):
     @torch.no_grad()
     def moe_infer(self, x, flat_expert_indices, flat_expert_weights):
         expert_cache = torch.zeros_like(x)
-        idxs = flat_expert_indices.argsort()
+        idxs = flat_expert_indices.argsort()  # 索引按照专家从 0~7 排序，方便后面对每个专家单独计算
         tokens_per_expert = flat_expert_indices.bincount().cpu().numpy().cumsum(0)
         token_idxs = idxs // self.num_experts_per_tok
-        for i, end_idx in enumerate(tokens_per_expert):
+        for i, end_idx in enumerate(tokens_per_expert):  # 每个专家单独计算
             start_idx = 0 if i == 0 else tokens_per_expert[i - 1]
             if start_idx == end_idx:
                 continue
@@ -235,8 +235,8 @@ class DeepseekMoE(nn.Module):
             exp_token_idx = token_idxs[start_idx:end_idx]
             expert_tokens = x[exp_token_idx]
             expert_out = expert(expert_tokens)
-            expert_out.mul_(flat_expert_weights[idxs[start_idx:end_idx]])
-            expert_cache.scatter_reduce_(0, exp_token_idx.view(-1, 1).repeat(1, x.shape[-1]), expert_out, reduce='sum')
+            expert_out.mul_(flat_expert_weights[idxs[start_idx:end_idx]])  # 乘上相应的权重
+            expert_cache.scatter_reduce_(0, exp_token_idx.view(-1, 1).repeat(1, x.shape[-1]), expert_out, reduce='sum') # 必须要还原到原始输出上  6,96 -> 15,96
         return expert_cache
 
 
@@ -485,11 +485,11 @@ if __name__ == '__main__':
     transformer = DeepseekForCausalLM(ModelArgs())
 
     # 训练
-    transformer.train()
-    input_ids = torch.randint(0, 400, (32, 48))
-    labels = torch.randint(0, 400, (32, 48))
-    loss = transformer(input_ids, labels)
-    print(loss)
+    # transformer.train()
+    # input_ids = torch.randint(0, 400, (32, 48))
+    # labels = torch.randint(0, 400, (32, 48))
+    # loss = transformer(input_ids, labels)
+    # print(loss)
 
     # 生成
     transformer.eval()
