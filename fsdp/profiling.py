@@ -11,6 +11,10 @@ import time
 
 import torch
 
+def print0(*args):
+    if torch.distributed.get_rank() == 0:
+        print(*args)
+
 # the number of warmup steps before the active step in each profiling cycle
 WARMUP = 3
 
@@ -33,14 +37,14 @@ def maybe_enable_profiling(enable_profiling, dump_dir, profile_freq=10, global_s
             if not os.path.exists(curr_trace_dir):
                 os.makedirs(curr_trace_dir, exist_ok=True)
 
-            print(f"Dumping profiler traces at step {prof.step_num}")
+            print0(f"Dumping profiler traces at step {prof.step_num}")
             begin = time.monotonic()
             prof.export_chrome_trace(f"{curr_trace_dir}/rank{rank}_trace.json")
-            print(
+            print0(
                 f"Finished dumping profiler traces in {time.monotonic() - begin:.2f} seconds"
             )
 
-        print(f"Profiling active. Traces will be saved at {trace_dir}")
+        print0(f"Profiling active. Traces will be saved at {trace_dir}")
 
         if not os.path.exists(trace_dir):
             os.makedirs(trace_dir, exist_ok=True)
@@ -96,17 +100,17 @@ def maybe_enable_memory_snapshot(enable_snapshot, dump_folder, profile_freq=10, 
                 curr_snapshot_dir = os.path.join(snapshot_dir, dir_name)
                 if not os.path.exists(curr_snapshot_dir):
                     os.makedirs(curr_snapshot_dir, exist_ok=True)
-                print(f"Dumping memory snapshot at step {curr_step}")
+                print0(f"Dumping memory snapshot at step {curr_step}")
                 begin = time.monotonic()
                 with open(
                     f"{curr_snapshot_dir}/rank{rank}_memory_snapshot.pickle", "wb"
                 ) as output:
                     pickle.dump(torch.cuda.memory._snapshot(), output)
-                print(
+                print0(
                     f"Finished dumping memory snapshot in {time.monotonic() - begin:.2f} seconds"
                 )
 
-        print(f"Memory profiler active. Snapshot will be saved at {snapshot_dir}")
+        print0(f"Memory profiler active. Snapshot will be saved at {snapshot_dir}")
         profiler = MemoryProfiler(global_step, profile_freq)
         try:
             yield profiler

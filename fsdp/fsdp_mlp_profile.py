@@ -15,13 +15,19 @@ from datetime import datetime
 from profiling import maybe_enable_profiling, maybe_enable_memory_snapshot
 
 
+def print0(*args):
+    if torch.distributed.get_rank() == 0:
+        print(*args)
+
+
 class MLPDecoderLayer(nn.Module):
     def __init__(self, config, layer_idx):
         super(MLPDecoderLayer, self).__init__()
-        self.proj = nn.Linear(config.hidden_size, config.intermediate_size, bias=False)
+        self.up_proj = nn.Linear(config.hidden_size, config.intermediate_size, bias=False)
+        self.down_proj = nn.Linear(config.intermediate_size, config.hidden_size, bias=False)
 
     def forward(self, hidden_states):
-        hidden_states = self.proj(hidden_states)
+        hidden_states = self.down_proj(self.up_proj(hidden_states))
         return hidden_states
 
 
@@ -57,8 +63,8 @@ class MLPForCausalLM(nn.Module):
 
 @dataclass
 class MLPConfig:
-    hidden_size: int = 512
-    intermediate_size: int = 2048
+    hidden_size: int = 1024
+    intermediate_size: int = 5120
     num_hidden_layers: int = 6
     vocab_size: int = 128512
 
@@ -98,12 +104,12 @@ if __name__ == '__main__':
         model = MLPForCausalLM(config)
 
     num_params = get_num_params(model)
-    print(f"Number of parameters: {num_params / 1024 ** 2:.2f}M")
+    print0(f"Number of parameters: {num_params / 1024 ** 2:.2f}M")
 
     dtype = torch.bfloat16
     mp_policy = MixedPrecisionPolicy(param_dtype=dtype, reduce_dtype=dtype)
     fsdp_config = {"mesh": world_mesh, "mp_policy": mp_policy}
-    for layer_id, transformer_block in model.layers.items():
+    for layer_id, transformer_block in enumerate(model.layers):
         reshard_after_forward = int(layer_id) < len(model.layers) - 1
         fully_shard(
             transformer_block,
@@ -111,6 +117,8 @@ if __name__ == '__main__':
             reshard_after_forward=reshard_after_forward,
         )
     fully_shard(model, **fsdp_config, reshard_after_forward=True)
+
+    print0(model)
 
     model.to_empty(device='cuda')
     with torch.no_grad():
@@ -129,8 +137,9 @@ if __name__ == '__main__':
     torch.cuda.empty_cache()
     torch.cuda.reset_peak_memory_stats()
     max_memory = torch.cuda.max_memory_allocated()
-    print('[Train] Begin Train Loop. The current GPU memory is '
-          f'{(max_memory / 1024 ** 3):.1f}GB')
+    print0('[Train] Begin Train Loop. The current GPU memory is '
+           f'{(max_memory / 1024 ** 3):.1f}GB')
+
 
     def loss_fun(logits, labels, vocab_size):
         shift_logits = logits[..., :-1, :].contiguous()
@@ -144,25 +153,25 @@ if __name__ == '__main__':
         loss = loss_fct(shift_logits, shift_labels)
         return loss
 
+
     # 模拟数据集
     enable_profiling = True
     enable_snapshot = True
     profile_freq = 10
 
     input_shape = (32, 128)
-    labels_shape = (32,)
 
     with maybe_enable_profiling(
             enable_profiling, work_dir, profile_freq, global_step=0
     ) as torch_profiler, maybe_enable_memory_snapshot(
         enable_snapshot, work_dir, global_step=0
     ) as memory_profiler:
-        for i in range(100):
+        for i in range(40):
             torch.cuda.reset_peak_memory_stats()
 
             # 由于只开了 fsdp，所以每张卡上数据不一样即可
             input_ids = torch.randint(1, config.vocab_size, input_shape).cuda()
-            labels = torch.randint(1, config.vocab_size, labels_shape).long().cuda()
+            labels = torch.randint(1, config.vocab_size, input_shape).long().cuda()
 
             logits = model(input_ids, labels)
             loss = loss_fun(logits, labels, config.vocab_size)
@@ -173,8 +182,8 @@ if __name__ == '__main__':
             optimizer.zero_grad()
 
             max_memory = torch.cuda.max_memory_allocated()
-            print(f'[Train] Step {i}. loss: {loss.item()}. The current GPU memory is '
-                  f'{(max_memory / 1024 ** 3):.1f}GB')
+            print0(f'[Train] Step {i}. loss: {loss.item()}. The current GPU memory is '
+                   f'{(max_memory / 1024 ** 3):.1f}GB')
 
             if torch_profiler:
                 torch_profiler.step()
