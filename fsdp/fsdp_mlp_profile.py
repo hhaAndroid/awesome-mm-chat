@@ -63,10 +63,10 @@ class MLPForCausalLM(nn.Module):
 
 @dataclass
 class MLPConfig:
-    hidden_size: int = 1024
-    intermediate_size: int = 5120
+    hidden_size: int = 2048
+    intermediate_size: int = 8192
     num_hidden_layers: int = 6
-    vocab_size: int = 128512
+    vocab_size: int = 4096
 
 
 def get_num_params(model: torch.nn.Module, exclude_embedding: bool = False) -> int:
@@ -159,7 +159,7 @@ if __name__ == '__main__':
     enable_snapshot = True
     profile_freq = 10
 
-    input_shape = (32, 128)
+    input_shape = (2, 8192)
 
     with maybe_enable_profiling(
             enable_profiling, work_dir, profile_freq, global_step=0
