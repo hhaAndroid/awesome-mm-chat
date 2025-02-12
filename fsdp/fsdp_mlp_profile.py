@@ -11,6 +11,9 @@ from torch.distributed._composable.fsdp import (
 )
 from torch.optim import AdamW
 from datetime import datetime
+from torch.distributed.algorithms._checkpoint.checkpoint_wrapper import (
+    checkpoint_wrapper as ptd_checkpoint_wrapper,
+)
 
 from profiling import maybe_enable_profiling, maybe_enable_memory_snapshot
 
@@ -109,6 +112,22 @@ if __name__ == '__main__':
     dtype = torch.bfloat16
     mp_policy = MixedPrecisionPolicy(param_dtype=dtype, reduce_dtype=dtype)
     fsdp_config = {"mesh": world_mesh, "mp_policy": mp_policy}
+
+    for idx, layer in enumerate(model.layers[:-1]):
+        layer = ptd_checkpoint_wrapper(layer, preserve_rng_state=False)
+        model.layers[idx] = layer
+
+    # naive 切分规则
+    # for layer_id, transformer_block in enumerate(model.layers):
+    #     reshard_after_forward = int(layer_id) < len(model.layers) - 1
+    #     fully_shard(
+    #         transformer_block,
+    #         **fsdp_config,
+    #         reshard_after_forward=reshard_after_forward,
+    #     )
+    # fully_shard(model, **fsdp_config, reshard_after_forward=True)
+
+    # 新切分规则
     for layer_id, transformer_block in enumerate(model.layers):
         reshard_after_forward = int(layer_id) < len(model.layers) - 1
         fully_shard(
@@ -116,14 +135,23 @@ if __name__ == '__main__':
             **fsdp_config,
             reshard_after_forward=reshard_after_forward,
         )
+    fully_shard(model.embed_tokens, **fsdp_config, reshard_after_forward=True)
+    fully_shard(model.lm_head, **fsdp_config, reshard_after_forward=True)
     fully_shard(model, **fsdp_config, reshard_after_forward=True)
 
     print0(model)
+
+    torch.cuda.empty_cache()
+    torch.cuda.reset_peak_memory_stats()
 
     model.to_empty(device='cuda')
     with torch.no_grad():
         model.init_weights()
     model.train()
+
+    max_memory = torch.cuda.max_memory_allocated()
+    print0('[Train] 1111Begin Train Loop. The current GPU memory is '
+           f'{(max_memory / 1024 ** 2):.1f}mB')
 
     requried_grad_params = [
         param for param in model.parameters() if param.requires_grad
@@ -175,6 +203,8 @@ if __name__ == '__main__':
 
             logits = model(input_ids, labels)
             loss = loss_fun(logits, labels, config.vocab_size)
+
+            del logits  # 核心，可以节省峰值显存
 
             loss.backward()
 
