@@ -5,31 +5,44 @@ from torch.distributed._tensor import DTensor, DeviceMesh, Shard, Replicate, dis
 
 
 def demo1():
-
     WORLD_SIZE = 4
+
     @spawn_threads_and_init_comms
     def shard_big_tensor(world_size):
-      mesh = DeviceMesh("cpu", [0, 1, 2, 3])
-      big_tensor = torch.randn((653, 10), device="meta")
+        mesh = DeviceMesh("cpu", [0, 1, 2, 3])
 
-      # 在 mesh 上进行第 0 维度切分，无法整除的话，会导致不同 rank 不一样
-      dtensor = distribute_tensor(big_tensor, mesh, [Shard(0)])
-      print(f"on rank: {dist.get_rank()}, dtensor global shape: {dtensor.shape}, local shape: {dtensor.to_local().shape}\n")
-      print(f"   global device: {dtensor.device}, local device: {dtensor.to_local().device}\n")
+        global_tensor = torch.randn((8, 10))
+        dist.broadcast(global_tensor, 0)
+
+        local_tensor = global_tensor.chunk(4)
+        local_tensor_sum = [t.sum() for t in local_tensor]
+        if dist.get_rank() == 0:
+            print(f'rank: {dist.get_rank()}, local_tensor_sum: {local_tensor_sum}, full tensor {global_tensor.sum()}')
+
+        # 在 mesh 上进行第 0 维度切分
+        # 将 global tensor 进行 distribute 化
+        dtensor = distribute_tensor(global_tensor, mesh, [Shard(0)])
+        print(
+            f"=====on rank: {dist.get_rank()}, dtensor global shape: {dtensor.shape}, local shape: {dtensor.to_local().shape}, local tensor: {dtensor.to_local().sum()}, full tensor: {dtensor.full_tensor().sum()}======\n")
 
     shard_big_tensor(WORLD_SIZE)
 
 
 def demo2():
-    WORLD_SIZE=4
+    WORLD_SIZE = 4
+
     @spawn_threads_and_init_comms
     def replicate_big_tensor(world_size):
         mesh = DeviceMesh("cpu", [0, 1, 2, 3])
-        big_tensor = torch.randn((888, 10))
-        big_tensor_copy = big_tensor.clone()
-        # 重复 op，这个实际上类似广播，rank0 广播给别的
-        dtensor = distribute_tensor(big_tensor, mesh, [Replicate()])
-        print(f"on rank: {dist.get_rank()}, dtensor global shape: {dtensor.shape}, local shape: {dtensor.to_local().shape}, {dtensor.to_local().sum()}, {big_tensor_copy.sum()}")
+        global_tensor = torch.randn((8, 10))
+        dist.broadcast(global_tensor, 0)
+        if dist.get_rank() == 0:
+            print(f'rank: {dist.get_rank()}, full tensor {global_tensor.sum()}')
+
+        # 类似广播功能
+        dtensor = distribute_tensor(global_tensor, mesh, [Replicate()])
+        print(
+            f"=====on rank: {dist.get_rank()}, dtensor global shape: {dtensor.shape}, local shape: {dtensor.to_local().shape}, local tensor: {dtensor.to_local().sum()}, full tensor: {dtensor.full_tensor().sum()}======\n")
 
     replicate_big_tensor(WORLD_SIZE)
 
@@ -39,9 +52,6 @@ def demo3():
 
     @spawn_threads_and_init_comms
     def partially_mesh(world_size):
-        # 这个代码不好理解，可以修改为如下
-        device_mesh = DeviceMesh("cpu", torch.arange(world_size).reshape(2, 2))
-
         device_mesh1 = DeviceMesh("cpu", torch.arange(world_size).reshape(2, 2), mesh_dim_names=("dp", "sp"))
         dp_mesh = device_mesh1["dp"]
         sp_mesh = device_mesh1["sp"]
@@ -63,6 +73,7 @@ def demo3():
 
     partially_mesh(WORLD_SIZE)
 
+
 def demo4():
     WORLD_SIZE = 4
 
@@ -72,21 +83,27 @@ def demo4():
         # create a 2-d mesh
         device_mesh = DeviceMesh("cpu", torch.arange(world_size).reshape(2, 2))
 
-        big_tensor = torch.randn((888, 10))
-        # 在设备网格的第一维上进行复制，然后在设备网格的第二维上进行分片（在张量维度 0 上）。
-        #  rank: 0,dp_rank: 0, sp_rank: 0, DeviceMesh([0, 2], mesh_dim_names=('dp',)), DeviceMesh([0, 1], mesh_dim_names=('sp',))
-        #  rank: 3,dp_rank: 1, sp_rank: 1, DeviceMesh([1, 3], mesh_dim_names=('dp',)), DeviceMesh([2, 3], mesh_dim_names=('sp',))
-        #  rank: 2,dp_rank: 1, sp_rank: 0, DeviceMesh([0, 2], mesh_dim_names=('dp',)), DeviceMesh([2, 3], mesh_dim_names=('sp',))
-        #  rank: 1,dp_rank: 0, sp_rank: 1, DeviceMesh([1, 3], mesh_dim_names=('dp',)), DeviceMesh([0, 1], mesh_dim_names=('sp',))
-        # 在 dp 维度进行复制，也就是说 dp0 复制数据给 dp1，即 gpu0 复制数据给 gpu2, gpu1 复制数据给 gpu3,此时 gpu0 == gpu2, gpu1 == gpu3
-        # 然后在 sp 维度进行切片，切片维度是0，也就是说 gpu0(sp0) 在 10 这个维度切分，然后保留第一部分，gpu1(sp1) 在 10 这个维度切分，然后保留第二部分
-        # gpu2(sp0) 在 10 这个维度切分，然后保留第一部分，gpu3(sp1) 在 10 这个维度切分，然后保留第二部分
-        # 从而切分后 gpu0==gpu2, gpu1=gpu3,但是 gpu0 != gpu1
+        global_tensor = torch.randn((8, 10))
+        dist.broadcast(global_tensor, 0)
+
+        local_tensor = global_tensor.chunk(2, dim=1)
+        local_tensor_sum = [t.sum() for t in local_tensor]
+        if dist.get_rank() == 0:
+            print(f'rank: {dist.get_rank()}, local_tensor_sum: {local_tensor_sum}, full tensor {global_tensor.sum()}')
+
         spec = [Replicate(), Shard(1)]
-        partial_shard = distribute_tensor(big_tensor, device_mesh=device_mesh, placements=spec)
-        print(f"on rank: {dist.get_rank()}, {partial_shard.sum()}, dtensor global shape: {partial_shard.shape}, local shape: {partial_shard.to_local().shape}\n")
+        dtensor = distribute_tensor(global_tensor, device_mesh=device_mesh, placements=spec)
+        print(
+            f"=====on rank: {dist.get_rank()}, dtensor global shape: {dtensor.shape}, local shape: {dtensor.to_local().shape}, local tensor: {dtensor.to_local().sum()}, full tensor: {dtensor.full_tensor().sum()}======\n")
+
+        spec = [Shard(1), Replicate()]
+        dtensor = distribute_tensor(global_tensor, device_mesh=device_mesh, placements=spec)
+        print(
+            f"=====11111 on rank: {dist.get_rank()}, dtensor global shape: {dtensor.shape}, local shape: {dtensor.to_local().shape}, local tensor: {dtensor.to_local().sum()}, full tensor: {dtensor.full_tensor().sum()}======\n")
+
 
     partially_shard_tensor(WORLD_SIZE)
+
 
 def demo5():
     @spawn_threads_and_init_comms
@@ -94,13 +111,22 @@ def demo5():
         mesh = DeviceMesh("cpu", torch.arange(world_size))
         # create a DistributedTensor that shards on dim 0, from a local torch.Tensor
         # 每个 rank 上假设已经是分片后的数据，from_local 后可以直接合并为一个大的
-        local_tensor = torch.randn((8, 8), requires_grad=True)
+        local_tensor = torch.randn((8, 4), requires_grad=True)
         rowwise_placement = [Shard(0)]
+        # 从 local 视图建立 dtensor
         rowwise_tensor = DTensor.from_local(local_tensor, mesh, rowwise_placement)
         print(
             f"on rank: {dist.get_rank()}, dtensor global shape: {rowwise_tensor.shape}, local shape: {rowwise_tensor.to_local().shape}")
 
+        # 注意和这个代码区别
+        global_tensor = local_tensor
+        # 从 global 视图建立 dtensor
+        dtensor = distribute_tensor(global_tensor, mesh, [Shard(0)])
+        print(
+            f"11111 on rank: {dist.get_rank()}, dtensor global shape: {dtensor.shape}, local shape: {dtensor.to_local().shape}")
+
     dtensor_from_local_to_local(4)
+
 
 def demo6():
     @spawn_threads_and_init_comms
@@ -123,8 +149,10 @@ def demo6():
 
     dtensor_reshard(4)
 
+
 def demo7():
-    WORLD_SIZE=4
+    WORLD_SIZE = 4
+
     @spawn_threads_and_init_comms
     def replicate_big_tensor(world_size):
         mesh = DeviceMesh("cpu", [0, 1, 2, 3])
@@ -139,7 +167,8 @@ def demo7():
         # shard 布局变成 Replicate 布局就必然会触发 all-reduce-sum
         dtensor = DTensor.from_local(big_tensor, mesh, [Shard(-1)])
         dtensor = dtensor.redistribute(mesh, [Replicate()])
-        print(f"on rank: {dist.get_rank()}, dtensor global shape: {dtensor.shape}, local shape: {dtensor.to_local().shape}, {dtensor.to_local().sum()}, {big_tensor_copy.sum()}")
+        print(
+            f"on rank: {dist.get_rank()}, dtensor global shape: {dtensor.shape}, local shape: {dtensor.to_local().shape}, {dtensor.to_local().sum()}, {big_tensor_copy.sum()}")
 
     replicate_big_tensor(WORLD_SIZE)
 
@@ -148,6 +177,4 @@ def demo7():
 # https://github.com/pytorch/pytorch/issues/88838
 # https://docs.google.com/document/d/1nFeJ8NSFNhNlCkNgWK31ZGRqm1L9rd0i_XN_RprphaI/edit?tab=t.0
 if __name__ == '__main__':
-    demo7()
-
-
+    demo5()
