@@ -139,6 +139,6 @@ def current_max_mem(desc=''):
     max_memory_reserved = torch.cuda.max_memory_reserved()
 
     print0(f'{desc}The current GPU memory is '
-           f'Max Alloc: {(max_memory_allocated / 1024 ** 2):.1f}mB, '
-           f'Max Reserve: {(max_memory_reserved / 1024 ** 2):.1f}mB'
+           f'Max Alloc: {(max_memory_allocated / 1024 ** 3):.1f}G, '
+           f'Max Reserve: {(max_memory_reserved / 1024 ** 3):.1f}G'
            )

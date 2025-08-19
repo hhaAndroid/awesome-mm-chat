@@ -13,7 +13,7 @@ import argparse
 from torch.optim import AdamW
 from datetime import datetime
 from torch.distributed.algorithms._checkpoint.checkpoint_wrapper import checkpoint_wrapper
-from fsdp_share.utils.profiling import maybe_enable_profiling, \
+from utils.profiling import maybe_enable_profiling, \
     maybe_enable_memory_snapshot, \
     profile_time_and_memory,\
     current_max_mem
@@ -100,7 +100,7 @@ def build_fsdp_1(model, use_checkpoint=False):
     fully_shard(model, **fsdp_config, reshard_after_forward=True)
 
 
-# torchrun --nproc_per_node=2 fsdp_mlp_profile.py
+# PYTHONPATH="$(pwd)" torchrun --nproc_per_node=2 fsdp_mlp_profile.py
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--profile_freq", default=0)
@@ -182,6 +182,7 @@ if __name__ == '__main__':
         enable_snapshot, work_dir, global_step=0
     ) as memory_profiler:
         for i in range(20):
+            print0(f'=====================step {i}==========================')
             with profile_time_and_memory('[model fwd]'):
                 # 由于只开了 fsdp，所以每张卡上数据不一样即可
                 input_ids = torch.randint(1, config.vocab_size, input_shape).cuda()
