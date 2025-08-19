@@ -1,10 +1,8 @@
 import torch
-import torch.nn as nn
 from torch.nn import CrossEntropyLoss
 import os
 from torch import distributed as torch_dist
 from torch.distributed.device_mesh import init_device_mesh
-from dataclasses import dataclass
 from torch.distributed._composable.fsdp import (
     fully_shard,
     MixedPrecisionPolicy,
@@ -17,60 +15,12 @@ from utils.profiling import maybe_enable_profiling, \
     maybe_enable_memory_snapshot, \
     profile_time_and_memory,\
     current_max_mem
+from transformers import AutoModelForCausalLM
 
 
 def print0(*args):
     if torch.distributed.get_rank() == 0:
         print(*args)
-
-
-class MLPDecoderLayer(nn.Module):
-    def __init__(self, config, layer_idx):
-        super(MLPDecoderLayer, self).__init__()
-        self.up_proj = nn.Linear(config.hidden_size, config.intermediate_size, bias=False)
-        self.down_proj = nn.Linear(config.intermediate_size, config.hidden_size, bias=False)
-
-    def forward(self, hidden_states):
-        hidden_states = self.down_proj(self.up_proj(hidden_states))
-        return hidden_states
-
-
-class MLPForCausalLM(nn.Module):
-    def __init__(self, config):
-        super(MLPForCausalLM, self).__init__()
-
-        self.vocab_size = config.vocab_size
-        self.embed_tokens = nn.Embedding(config.vocab_size, config.hidden_size, 0)
-        self.layers = nn.ModuleList(
-            [
-                MLPDecoderLayer(config, layer_idx)
-                for layer_idx in range(config.num_hidden_layers)
-            ]
-        )
-
-        self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
-
-    def init_weights(self):
-        for module in self.modules():
-            if isinstance(module, nn.Linear):
-                module.weight.data.normal_(mean=0.0, std=0.02)
-            if isinstance(module, nn.Embedding):
-                module.weight.data.normal_(mean=0.0, std=0.02)
-
-    def forward(self, input_ids, labels):
-        hidden_states = self.embed_tokens(input_ids)
-        for layer in self.layers:
-            hidden_states = layer(hidden_states)
-        logits = self.lm_head(hidden_states)
-        return logits
-
-
-@dataclass
-class MLPConfig:
-    hidden_size: int = 2048
-    intermediate_size: int = 8192
-    num_hidden_layers: int = 6
-    vocab_size: int = 4096
 
 
 def get_num_params(model: torch.nn.Module, exclude_embedding: bool = False) -> int:
@@ -103,6 +53,7 @@ def build_fsdp_1(model, use_checkpoint=False):
 # PYTHONPATH="$(pwd)" torchrun --nproc_per_node=2 basic_1/fsdp_mlp_profile.py
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument("--model_path")
     parser.add_argument("--profile_freq", default=0)
     parser.add_argument('--enable_profiling', type=bool, default=False)
     parser.add_argument('--enable_snapshot', type=bool, default=False)
@@ -130,9 +81,8 @@ if __name__ == '__main__':
     work_dir = os.path.join(work_dir, timestamp)
     os.makedirs(os.path.expanduser(work_dir), mode=0o777, exist_ok=True)
 
-    config = MLPConfig()
     with torch.device("meta"):
-        model = MLPForCausalLM(config)
+        model = AutoModelForCausalLM.from_pretrained(args.model_path)
 
     num_params = get_num_params(model)
     print0(f"Number of parameters: {num_params / 1024 ** 2:.2f}M")
